@@ -1,0 +1,7 @@
+rules:
+  - id: custom-python-rule
+    patterns:
+      - pattern: print(...)
+    message: "Use logging instead of print()"
+    languages: [python]
+    severity: WARNING

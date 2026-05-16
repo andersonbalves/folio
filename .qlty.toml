@@ -1,0 +1,13 @@
+# Qlty configuration
+# https://qlty.sh/docs/configuration
+
+[metrics]
+complexity = { threshold = 10 }
+duplication = { threshold = 5 }
+
+[python]
+version = "3.14"
+
+[coverage]
+enabled = true
+threshold = 80

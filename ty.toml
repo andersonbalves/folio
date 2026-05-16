@@ -1,0 +1,14 @@
+# ty configuration - Strict
+# https://docs.astral.sh/ty/configuration/
+
+[environment]
+python-version = "3.14"
+python-platform = "all"
+
+[src]
+include = ["src", "packages/*/src"]
+exclude = ["**/node_modules", "**/__pycache__", ".venv"]
+
+[rules]
+all = "error"
+invalid-argument-type = "ignore"

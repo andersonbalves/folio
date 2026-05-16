@@ -1,0 +1,21 @@
+# Ruff configuration - Strict & Secure
+# https://docs.astral.sh/ruff/settings/
+
+line-length = 100
+target-version = "py314"
+
+[lint]
+# E: pycodestyle errors, F: Pyflakes, I: isort, N: pep8-naming, W: pycodestyle warnings
+# UP: pyupgrade, B: flake8-bugbear, SIM: flake8-simplify, RET: flake8-return
+# PTH: flake8-use-pathlib, T20: flake8-print
+select = ["E", "F", "I", "N", "W", "UP", "B", "SIM", "RET", "PTH", "T20"]
+ignore = []
+
+[lint.isort]
+known-first-party = ["folio"]
+
+[format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
