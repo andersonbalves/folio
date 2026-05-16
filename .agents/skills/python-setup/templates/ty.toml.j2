@@ -1,0 +1,11 @@
+# ty configuration - Strict
+# https://docs.astral.sh/ty/configuration/
+
+include = ["{{ src_dir | default('src') }}", "packages/*/src"]
+exclude = ["**/node_modules", "**/__pycache__", ".venv"]
+python-version = "{{ python_version | default('3.14') }}"
+target-platform = "all"
+
+[rules]
+all = "error"
+missing-type-stub = "warn"

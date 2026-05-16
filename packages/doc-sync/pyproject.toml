@@ -1,0 +1,21 @@
+[project]
+name = "folio-sync"
+version = "0.1.0"
+requires-python = ">=3.14"
+dependencies = [
+    "boto3>=1.43.9",
+    "dynaconf>=3.2.13",
+    "folio-core",
+    "psycopg[binary,pool]>=3.3.4",
+    "structlog>=25.5.0",
+]
+
+[project.scripts]
+folio-sync = "folio_sync.handler:main"
+
+[tool.uv.sources]
+folio-core = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
