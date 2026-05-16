@@ -1,0 +1,23 @@
+{
+  "skill_name": "python-dependency-management",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "Preciso criar um monorepo Python com uv. Tenho dois pacotes: `core` (biblioteca pura com modelos Pydantic) e `api` (FastAPI que usa core). Como estruturo isso com uv workspace? Mostre a estrutura de diretórios e os pyproject.toml necessários.",
+      "expected_output": "Estrutura de diretórios clara, pyproject.toml da raiz com [tool.uv.workspace] e members, pyproject.toml dos membros com [build-system], e configuração de [tool.uv.sources] com workspace=true para a dependência intra-workspace.",
+      "files": []
+    },
+    {
+      "id": 1,
+      "prompt": "Rodei `uv sync` dentro da pasta `packages/core/` do meu workspace e agora apareceu um `.venv` lá dentro. Os imports do projeto principal pararam de funcionar. O que aconteceu e como corrijo?",
+      "expected_output": "Diagnóstico claro do problema (venv local criado em vez de usar o da raiz), instrução para deletar o .venv local, e instrução para rodar uv sync sempre da raiz.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Tenho um projeto uv com tudo na raiz (src/mcp_server/, pyproject.toml, uv.lock). Quero refatorar para workspace porque vou separar o MCP server em pacote independente chamado `mcp-server` e manter um pacote `shared` para código comum. Como faço a migração passo a passo sem quebrar tudo?",
+      "expected_output": "Passo a passo de migração: criar subdiretórios, mover código, ajustar pyproject.toml raiz para workspace virtual ou real, configurar membros, rodar uv sync, verificar imports. Menção a deletar .venv antigo se existir dentro de subdiretório.",
+      "files": []
+    }
+  ]
+}
