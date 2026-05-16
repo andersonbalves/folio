@@ -1,3 +1,5 @@
+"""Async PostgreSQL connection pool for the MCP server."""
+
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -10,6 +12,7 @@ _pool: AsyncConnectionPool | None = None
 
 
 async def get_pool() -> AsyncConnectionPool:
+    """Return the shared connection pool, initializing it on first call."""
     global _pool
     if _pool is None:
         conninfo = (
@@ -31,12 +34,14 @@ async def get_pool() -> AsyncConnectionPool:
 
 @asynccontextmanager
 async def conn() -> AsyncIterator[AsyncConnection]:
+    """Yield a connection from the pool; auto-returns it on exit."""
     pool = await get_pool()
     async with pool.connection() as connection:
         yield connection
 
 
 async def close_pool() -> None:
+    """Close the connection pool and reset the singleton."""
     global _pool
     if _pool is not None:
         await _pool.close()

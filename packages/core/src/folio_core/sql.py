@@ -1,8 +1,12 @@
+"""PEP 750 template processing for PostgreSQL parameterized queries."""
+
 from typing import Any, Protocol, runtime_checkable
 
 
 @runtime_checkable
 class Interpolation(Protocol):
+    """Protocol for a single interpolated value in a PEP 750 template."""
+
     value: Any
     expression: str
     format_spec: str | None
@@ -11,6 +15,8 @@ class Interpolation(Protocol):
 
 @runtime_checkable
 class Template(Protocol):
+    """Protocol for a PEP 750 template (t-string)."""
+
     strings: tuple[str, ...]
     interpolations: tuple[Interpolation, ...]
 

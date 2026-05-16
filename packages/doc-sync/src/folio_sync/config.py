@@ -1,3 +1,5 @@
+"""Dynaconf settings for the doc-sync service (prefix: FOLIO_SYNC_*)."""
+
 from dynaconf import Dynaconf
 
 settings = Dynaconf(

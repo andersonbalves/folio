@@ -1,6 +1,4 @@
-"""[EN] MCP server handler for folio, serving as a bilingual Facade.
-[PT-BR] Handler do servidor MCP para o folio, servindo como uma Facade bilíngue.
-"""
+"""MCP server handler for folio — bilingual facade over internal tools."""
 
 import asyncio
 
@@ -31,8 +29,8 @@ mcp = FastMCP(
 
 @mcp.tool()
 async def list_topics():
-    """
-    [EN] List available documentation topics. Use this to discover the internal vocabulary.
+    """[EN] List available documentation topics. Use this to discover the internal vocabulary.
+
     [PT-BR] Lista os tópicos disponíveis na documentação. Use para descobrir o vocabulário interno.
     """
     return await list_topics_impl()
@@ -40,8 +38,8 @@ async def list_topics():
 
 @mcp.tool()
 async def search_docs(query: str, limit: int = 10):
-    """
-    [EN] Search documents by terms. Returns ranked paths and snippets.
+    """[EN] Search documents by terms. Returns ranked paths and snippets.
+
     [PT-BR] Busca documentos por termos. Retorna caminhos e trechos rankeados.
 
     Args:
@@ -53,8 +51,8 @@ async def search_docs(query: str, limit: int = 10):
 
 @mcp.tool()
 async def get_document(path: str):
-    """
-    [EN] Retrieve the full content of a document by its path.
+    """[EN] Retrieve the full content of a document by its path.
+
     [PT-BR] Recupera o conteúdo integral de um documento pelo seu caminho.
 
     Args:
@@ -64,7 +62,7 @@ async def get_document(path: str):
 
 
 async def _invoke_tool(tool_name: str, arguments: dict) -> dict:
-    """Invoca uma tool pelo nome. Usado pelo Lambda handler."""
+    """Dispatch a registered tool by name. Used by the Lambda handler."""
     tools = {
         "list_topics": list_topics_impl,
         "search_docs": search_docs_impl,
@@ -85,7 +83,7 @@ async def _invoke_tool(tool_name: str, arguments: dict) -> dict:
 
 
 def lambda_handler(event: dict, context=None) -> dict:
-    """Entry point Lambda (invocação direta)."""
+    """AWS Lambda entry point for direct tool invocation."""
     tool_name = event.get("tool", "")
     arguments = event.get("arguments", {})
     result = _loop.run_until_complete(_invoke_tool(tool_name, arguments))
@@ -93,5 +91,5 @@ def lambda_handler(event: dict, context=None) -> dict:
 
 
 def main() -> None:
-    """Entry point CLI (modo stdio para Claude Desktop)."""
+    """CLI entry point — runs the MCP server over stdio transport."""
     mcp.run(transport="stdio")

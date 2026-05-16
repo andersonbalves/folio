@@ -1,4 +1,4 @@
-"""Aplica migrations no banco de dados local."""
+"""Apply SQL migrations to the local database in sorted filename order."""
 
 from pathlib import Path
 
@@ -9,6 +9,7 @@ MIGRATIONS_DIR = Path(__file__).parent.parent / "migrations"
 
 
 def get_connection():
+    """Open a synchronous psycopg connection with autocommit enabled."""
     return psycopg.connect(
         host=settings.database.host,
         port=settings.database.port,
@@ -20,6 +21,7 @@ def get_connection():
 
 
 def apply_migrations():
+    """Execute all .sql files in MIGRATIONS_DIR in sorted order."""
     try:
         with get_connection() as conn, conn.cursor() as cur:
             files = sorted(MIGRATIONS_DIR.glob("*.sql"))

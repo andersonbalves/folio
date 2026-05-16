@@ -1,10 +1,13 @@
 #!/usr/bin/env python
+"""Upload seed markdown files from seed/kubernetes-docs to the LocalStack S3 bucket."""
+
 from pathlib import Path
 
 import boto3
 
 
 def main():
+    """Upload all .md files under seed/kubernetes-docs to the folio-docs S3 bucket."""
     s3 = boto3.client(
         "s3",
         endpoint_url="http://localhost:4566",

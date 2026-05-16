@@ -19,12 +19,26 @@ def _build_client():
 
 
 async def get_text(bucket: str, key: str) -> str:
+    """Download and return the UTF-8 content of an S3 object.
+
+    Args:
+        bucket: S3 bucket name.
+        key: S3 object key.
+    """
     client = _build_client()
     resp = await asyncio.to_thread(client.get_object, Bucket=bucket, Key=key)
     return resp["Body"].read().decode("utf-8")
 
 
 async def iter_markdowns(bucket: str, prefix: str = "") -> AsyncIterator[tuple[str, str]]:
+    """Yield (key, content) pairs for every .md object under prefix.
+
+    Paginates automatically; skips non-markdown keys.
+
+    Args:
+        bucket: S3 bucket name.
+        prefix: Key prefix filter; defaults to all objects.
+    """
     client = _build_client()
     paginator = client.get_paginator("list_objects_v2")
     for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
