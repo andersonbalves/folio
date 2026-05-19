@@ -49,8 +49,9 @@ def lambda_handler(event: dict, context=None) -> dict:
 
 
 async def _full_sync_cli() -> None:
-    await full_sync()
+    stats = await full_sync()
     await close_pool()
+    logger.info("sync.cli_complete", **stats)
 
 
 def main() -> None:

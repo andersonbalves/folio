@@ -4,7 +4,7 @@ import asyncio
 
 from fastmcp import FastMCP
 
-from folio_mcp.db import get_pool
+from folio_mcp.db import close_pool, get_pool
 from folio_mcp.tools.get_document import get_document as get_document_impl
 from folio_mcp.tools.list_topics import list_topics as list_topics_impl
 from folio_mcp.tools.search_docs import search_docs as search_docs_impl
@@ -28,12 +28,16 @@ mcp = FastMCP(
 
 
 @mcp.tool()
-async def list_topics():
+async def list_topics(category: str | None = None):
     """[EN] List available documentation topics. Use this to discover the internal vocabulary.
 
     [PT-BR] Lista os tópicos disponíveis na documentação. Use para descobrir o vocabulário interno.
+
+    Args:
+        category: [EN] Filter by category (e.g., "concept", "task", "starter", "adr").
+                  [PT-BR] Filtra por categoria (ex: "concept", "task", "starter", "adr").
     """
-    return await list_topics_impl()
+    return await list_topics_impl(category)
 
 
 @mcp.tool()
@@ -73,6 +77,7 @@ async def _invoke_tool(tool_name: str, arguments: dict) -> dict:
         return {"error": f"Tool '{tool_name}' not found"}
     await get_pool()
     result = await fn(**arguments)
+    await close_pool()
     if result is None:
         return {"error": "Not found"}
 
