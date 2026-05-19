@@ -6,9 +6,6 @@ ACCOUNT="000000000000"
 ROLE="arn:aws:iam::${ACCOUNT}:role/lambda-role"
 PG_HOST="172.17.0.1"  # acesso ao Postgres do host no Linux bridge gateway
 
-COMMON_ENV="Variables={PGHOST=$PG_HOST,PGPORT=5432,PGDATABASE=folio,PGUSER=folio,PGPASSWORD=dev,ROOT_PATH_FOR_DYNACONF=.}"
-
-# Overrides for Lambda environment
 # We use the bridge gateway IP to reach the host's mapped ports (Postgres, LocalStack)
 HOST_GATEWAY="172.17.0.1"
 DATABASE_HOST="$HOST_GATEWAY"

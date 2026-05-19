@@ -1,5 +1,6 @@
 """Apply SQL migrations to the local database in sorted filename order."""
 
+import sys
 from pathlib import Path
 
 import psycopg
@@ -28,7 +29,8 @@ def apply_migrations():
             for file in files:
                 sql = file.read_text()
                 cur.execute(sql)
-    except Exception:
+    except Exception as e:
+        sys.stderr.write(f"Migration failed: {e}\n")
         exit(1)
 
 
