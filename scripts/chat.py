@@ -102,10 +102,7 @@ class MCPBridge:
 DEFAULT_MODEL = "qwen2.5:7b"
 DEFAULT_MCP_COMMAND = "uv run folio-mcp"
 DEFAULT_SYSTEM = (
-    "You are a helpful assistant with access to the Folio internal knowledge base. "
-    "When the user asks about documentation, always use the available tools. "
-    "Recommended flow: 1) list_topics to discover vocabulary, "
-    "2) search_docs with exact terms, 3) get_document to read full content."
+    "You are a helpful assistant. Use the available tools when they would help answer the question."
 )
 
 
@@ -206,6 +203,12 @@ def parse_args() -> argparse.Namespace:
         "--mcp-command", default=DEFAULT_MCP_COMMAND, help="Command to spawn MCP server"
     )
     parser.add_argument("--system", default=DEFAULT_SYSTEM, help="System prompt override")
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        default=False,
+        help="Print full MCP request/response and model reasoning with color",
+    )
     return parser.parse_args()
 
 
@@ -236,7 +239,8 @@ async def main_async(args: argparse.Namespace) -> None:
             print("connected.")  # noqa: T201
             bridge = MCPBridge(client)
             tools = await bridge.list_tools()
-            agent = OllamaAgent(args.model, bridge, tools, system=args.system)
+            printer = DebugPrinter(enabled=args.debug)
+            agent = OllamaAgent(args.model, bridge, tools, system=args.system, printer=printer)
             await repl(agent, tools)
     except ConnectionRefusedError:
         print("\nOllama not running. Start with: ollama serve", file=sys.stderr)  # noqa: T201

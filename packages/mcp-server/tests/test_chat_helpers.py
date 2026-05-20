@@ -244,3 +244,28 @@ class TestOllamaAgentDebug:
         mock_printer.thinking.assert_not_called()
         mock_printer.request.assert_called_once_with("list_topics", {})
         mock_printer.response.assert_called_once_with("list_topics", "result")
+
+
+class TestCLI:
+    def test_default_system_is_minimal(self):
+        assert "always use" not in _mod.DEFAULT_SYSTEM
+        assert "Recommended flow" not in _mod.DEFAULT_SYSTEM
+        assert "helpful assistant" in _mod.DEFAULT_SYSTEM
+
+    def test_debug_flag_defaults_to_false(self):
+        import sys
+
+        old = sys.argv
+        sys.argv = ["chat.py"]
+        args = _mod.parse_args()
+        sys.argv = old
+        assert args.debug is False
+
+    def test_debug_flag_set_true(self):
+        import sys
+
+        old = sys.argv
+        sys.argv = ["chat.py", "--debug"]
+        args = _mod.parse_args()
+        sys.argv = old
+        assert args.debug is True
