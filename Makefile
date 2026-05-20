@@ -1,5 +1,5 @@
 .PHONY: up down clean ps logs migrate k8s-docs seed sync-full \
-        build deploy-local invoke-mcp serve chat worker \
+        build deploy-local invoke-mcp serve serve-http chat worker \
         test lint typecheck format check bootstrap
 
 NAME := folio
@@ -76,10 +76,14 @@ invoke-mcp:
 serve:
 	uv run $(NAME)-mcp
 
+serve-http:
+	uv run fastmcp run packages/mcp-server/src/folio_mcp/handler.py:mcp --transport sse --port 8001
+
 chat:
 	uv run scripts/chat.py $(ARGS)
 
 chat-web:
+	@echo "Requer MCP server rodando: make serve-http (em outro terminal)"
 	uv run chainlit run scripts/web_chat.py -w
 
 start-localstack:
@@ -91,7 +95,10 @@ deploy-mcp:
 
 # === Quality ===
 test:
-	uv run pytest -v
+	uv run pytest -m "not integration" -v
+
+coverage:
+	uv run pytest -m "not integration" --cov --cov-report=term-missing
 
 lint:
 	uv run ruff check .
