@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 import mcp.types
+import ollama
 from fastmcp import Client
 from fastmcp.client.client import CallToolResult
 
@@ -64,6 +65,49 @@ DEFAULT_SYSTEM = (
     "Recommended flow: 1) list_topics to discover vocabulary, "
     "2) search_docs with exact terms, 3) get_document to read full content."
 )
+
+
+class OllamaAgent:
+    """Drives the Ollama tool-calling agent loop with persistent message history."""
+
+    def __init__(
+        self,
+        model: str,
+        bridge: MCPBridge,
+        tools: list[mcp.types.Tool],
+        system: str = DEFAULT_SYSTEM,
+    ) -> None:
+        """Initialise with model, bridge, tools and an optional system prompt."""
+        self._model = model
+        self._bridge = bridge
+        self._ollama_tools = [mcp_tool_to_ollama(t) for t in tools]
+        self._messages: list[Any] = [{"role": "system", "content": system}]
+
+    async def run(self, user_msg: str) -> str:
+        """Append user message and run the agent loop until a final text response."""
+        self._messages.append({"role": "user", "content": user_msg})
+
+        while True:
+            response = await asyncio.to_thread(
+                ollama.chat,
+                model=self._model,
+                messages=self._messages,
+                tools=self._ollama_tools,
+            )
+            assistant_msg = response.message
+            self._messages.append(assistant_msg)
+
+            if not assistant_msg.tool_calls:
+                return assistant_msg.content or ""
+
+            for tool_call in assistant_msg.tool_calls:
+                name = tool_call.function.name
+                args = tool_call.function.arguments or {}
+                print(f"  [tool: {name}({args})]")  # noqa: T201
+                result_text = await self._bridge.call_tool(name, args)
+                truncated = result_text[:500] + "…" if len(result_text) > 500 else result_text
+                print(f"  → {truncated}")  # noqa: T201
+                self._messages.append({"role": "tool", "content": result_text})
 
 
 def parse_args() -> argparse.Namespace:
