@@ -252,20 +252,12 @@ class TestCLI:
         assert "Recommended flow" not in _mod.DEFAULT_SYSTEM
         assert "helpful assistant" in _mod.DEFAULT_SYSTEM
 
-    def test_debug_flag_defaults_to_false(self):
-        import sys
-
-        old = sys.argv
-        sys.argv = ["chat.py"]
+    def test_debug_flag_defaults_to_false(self, monkeypatch):
+        monkeypatch.setattr("sys.argv", ["chat.py"])
         args = _mod.parse_args()
-        sys.argv = old
         assert args.debug is False
 
-    def test_debug_flag_set_true(self):
-        import sys
-
-        old = sys.argv
-        sys.argv = ["chat.py", "--debug"]
+    def test_debug_flag_set_true(self, monkeypatch):
+        monkeypatch.setattr("sys.argv", ["chat.py", "--debug"])
         args = _mod.parse_args()
-        sys.argv = old
         assert args.debug is True
