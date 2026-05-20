@@ -1,5 +1,5 @@
 .PHONY: up down clean ps logs migrate k8s-docs seed sync-full \
-        build deploy-local invoke-mcp serve worker \
+        build deploy-local invoke-mcp serve chat worker \
         test lint typecheck format check bootstrap
 
 NAME := folio
@@ -75,6 +75,9 @@ invoke-mcp:
 # === Dev local (sem Lambda) ===
 serve:
 	uv run $(NAME)-mcp
+
+chat:
+	uv run scripts/chat.py $(ARGS)
 
 # === Quality ===
 test:

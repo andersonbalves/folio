@@ -33,6 +33,7 @@ make bootstrap
 ### Desenvolvimento
 
 - `make serve`: Roda o servidor MCP localmente via stdio.
+- `make chat`: Abre REPL conversacional com modelo Ollama local + ferramentas MCP (requer `ollama serve` rodando).
 - `make seed`: Faz upload dos arquivos `.md` de `seed/` para o bucket S3 local.
 - `make sync-full`: Executa uma sincronização manual completa S3 -> DB.
 - `make migrate`: Aplica migrations SQL.
