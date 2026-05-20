@@ -1,9 +1,15 @@
 """Tests for pure helper functions in scripts/chat.py."""
 
 import importlib.util
+import sys
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import mcp.types
+
+# ollama is a PEP 723 dep not installed in the workspace .venv;
+# stub it so chat.py can be imported without the runtime env.
+sys.modules.setdefault("ollama", MagicMock())
 
 # Load scripts/chat.py as a module without executing main()
 _spec = importlib.util.spec_from_file_location(
