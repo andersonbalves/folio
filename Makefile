@@ -106,7 +106,7 @@ check: lint typecheck test
 	@echo "Tudo verde."
 
 # === Bootstrap completo ===
-bootstrap: up migrate k8s-docs seed sync-full build deploy-local
+bootstrap: up migrate k8s-docs seed sync-full build deploy-local deploy-mcp
 	@echo ""
 	@echo "Ambiente pronto."
 	@echo "  Modo stdio   : make serve"
