@@ -8,6 +8,9 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import readline  # noqa: F401 — enables readline history for input()
+import shlex
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -110,6 +113,41 @@ class OllamaAgent:
                 self._messages.append({"role": "tool", "content": result_text})
 
 
+async def repl(agent: OllamaAgent, tools: list[mcp.types.Tool]) -> None:
+    """Run the interactive input loop."""
+    tool_names = [t.name for t in tools]
+    print(f"\nTools: {', '.join(tool_names)}")  # noqa: T201
+    print("Type /help for commands, /exit or Ctrl+D to quit.\n")  # noqa: T201
+
+    while True:
+        try:
+            user_input = await asyncio.to_thread(input, "You: ")
+        except EOFError:
+            print("\nBye.")  # noqa: T201
+            break
+
+        user_input = user_input.strip()
+        if not user_input:
+            continue
+        if user_input == "/exit":
+            print("Bye.")  # noqa: T201
+            break
+        if user_input == "/help":
+            print("Commands: /exit, /help")  # noqa: T201
+            print("Available MCP tools:")  # noqa: T201
+            for t in tools:
+                print(f"  {t.name}: {t.description or '(no description)'}")  # noqa: T201
+            continue
+
+        try:
+            response = await agent.run(user_input)
+            print(f"\nAssistant: {response}\n")  # noqa: T201
+        except ollama.ResponseError as exc:
+            print(f"Ollama error: {exc}", file=sys.stderr)  # noqa: T201
+        except KeyboardInterrupt:
+            print("\nInterrupted. Continue or /exit.")  # noqa: T201
+
+
 def parse_args() -> argparse.Namespace:
     """Parse CLI arguments."""
     parser = argparse.ArgumentParser(description="Chat with folio docs via Ollama + MCP")
@@ -129,6 +167,36 @@ def main() -> None:
 
 async def main_async(args: argparse.Namespace) -> None:
     """Run the chat REPL."""
+    parts = shlex.split(args.mcp_command)
+    mcp_config = {
+        "mcpServers": {
+            "folio": {
+                "command": parts[0],
+                "args": parts[1:],
+                "cwd": str(_PROJECT_ROOT),
+            }
+        }
+    }
+
+    print(f"Model: {args.model}")  # noqa: T201
+    print("Connecting to folio-mcp…", end=" ", flush=True)  # noqa: T201
+
+    try:
+        async with Client(mcp_config) as client:
+            print("connected.")  # noqa: T201
+            bridge = MCPBridge(client)
+            tools = await bridge.list_tools()
+            agent = OllamaAgent(args.model, bridge, tools, system=args.system)
+            await repl(agent, tools)
+    except ConnectionRefusedError:
+        print("\nOllama not running. Start with: ollama serve", file=sys.stderr)  # noqa: T201
+        sys.exit(1)
+    except Exception as exc:
+        if "folio-mcp" in str(exc) or "mcp" in str(exc).lower():
+            print(f"\nFailed to start folio-mcp: {exc}", file=sys.stderr)  # noqa: T201
+        else:
+            print(f"\nError: {exc}", file=sys.stderr)  # noqa: T201
+        sys.exit(1)
 
 
 if __name__ == "__main__":
