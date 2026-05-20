@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 from pathlib import Path
+from typing import Any
 
 import mcp.types
 from fastmcp.client.client import CallToolResult
@@ -16,7 +17,7 @@ from fastmcp.client.client import CallToolResult
 _PROJECT_ROOT = Path(__file__).parent.parent
 
 
-def mcp_tool_to_ollama(tool: mcp.types.Tool) -> dict:
+def mcp_tool_to_ollama(tool: mcp.types.Tool) -> dict[str, Any]:
     """Convert an MCP tool schema to Ollama's tool format."""
     return {
         "type": "function",
