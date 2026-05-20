@@ -1,8 +1,38 @@
 """Chainlit web chat interface using MCP and Localstack."""
 
+import contextlib
 import json
 import os
-from contextlib import AsyncExitStack
+
+import sniffio
+
+# Monkey-patch sniffio to fix NoEventLoopError caused by nest_asyncio in Python 3.14
+sniffio.current_async_library = lambda: "asyncio"
+
+import asyncio
+
+# Patch asyncio.current_task to work with nest_asyncio in Python 3.14
+_c_current_task = asyncio.current_task
+
+
+def _patched_current_task(loop=None):
+    task = _c_current_task(loop)
+    if task is not None:
+        return task
+    if loop is None:
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            return None
+    return getattr(asyncio.tasks, "_current_tasks", {}).get(loop)
+
+
+asyncio.current_task = _patched_current_task
+asyncio.tasks.current_task = (
+    _patched_current_task  # asyncio.timeouts uses tasks.current_task directly
+)
+
+from typing import Any
 
 import chainlit as cl
 import litellm
@@ -16,6 +46,31 @@ load_dotenv()
 LLM_MODEL = os.environ.get("LLM_MODEL", "gemini/gemini-2.5-pro")
 SYSTEM_PROMPT = os.environ.get("SYSTEM_PROMPT", "You are a helpful assistant.")
 MCP_LAMBDA_URL = os.environ.get("MCP_LAMBDA_URL")
+LLM_THINKING_BUDGET = int(os.environ.get("LLM_THINKING_BUDGET", "0"))
+_THINKING_EXTRAS: dict[str, Any] = (
+    {"thinking": {"type": "enabled", "budget_tokens": LLM_THINKING_BUDGET}}
+    if LLM_THINKING_BUDGET > 0
+    else {}
+)
+
+
+async def _run_mcp_session(
+    url: str,
+    ready: asyncio.Event,
+    done: asyncio.Event,
+    holder: dict,
+) -> None:
+    """Own the full MCP session lifecycle in a single task.
+
+    anyio cancel scopes must enter and exit in the same asyncio task.
+    Chainlit runs each callback in separate tasks, so we keep the connection
+    alive here and signal readiness/teardown via events.
+    """
+    async with sse_client(url) as (read, write), ClientSession(read, write) as session:
+        await session.initialize()
+        holder["session"] = session
+        ready.set()
+        await done.wait()
 
 
 def mcp_tool_to_openai(tool: mcp.types.Tool) -> dict:
@@ -37,16 +92,20 @@ async def on_chat_start():
         await cl.Message(content="Error: MCP_LAMBDA_URL environment variable is not set.").send()
         return
 
-    stack = AsyncExitStack()
-    cl.user_session.set("mcp_stack", stack)
-
     msg = cl.Message(content="Connecting to MCP Server...", author="System")
     await msg.send()
 
+    ready: asyncio.Event = asyncio.Event()
+    done: asyncio.Event = asyncio.Event()
+    holder: dict = {}
+
+    task = asyncio.create_task(_run_mcp_session(MCP_LAMBDA_URL, ready, done, holder))
+    cl.user_session.set("mcp_done", done)
+    cl.user_session.set("mcp_task", task)
+
     try:
-        sse = await stack.enter_async_context(sse_client(MCP_LAMBDA_URL))
-        session = await stack.enter_async_context(ClientSession(sse[0], sse[1]))
-        await session.initialize()
+        await asyncio.wait_for(ready.wait(), timeout=10)
+        session: ClientSession = holder["session"]
         cl.user_session.set("mcp_session", session)
 
         tools_response = await session.list_tools()
@@ -58,6 +117,7 @@ async def on_chat_start():
         msg.content = f"Connected! Found {len(tools)} tools: {', '.join([t.name for t in tools])}"
         await msg.update()
     except Exception as e:
+        done.set()
         msg.content = f"Failed to connect to MCP: {str(e)}"
         await msg.update()
 
@@ -65,6 +125,15 @@ async def on_chat_start():
 @cl.on_message
 async def on_message(message: cl.Message):
     """Handle user messages and execute LLM tool calls."""
+    try:
+        await _handle_message(message)
+    except Exception as e:
+        import traceback
+
+        await cl.Message(content=f"Error: {e}\n```\n{traceback.format_exc()}\n```").send()
+
+
+async def _handle_message(message: cl.Message) -> None:
     session: ClientSession = cl.user_session.get("mcp_session")
     if not session:
         await cl.Message(content="Not connected to MCP. Please check the logs.").send()
@@ -83,16 +152,21 @@ async def on_message(message: cl.Message):
             model=LLM_MODEL,
             messages=messages,
             tools=openai_tools if openai_tools else None,
+            **_THINKING_EXTRAS,
         )
 
         assistant_message = response.choices[0].message
 
-        if assistant_message.content:
-            messages.append({"role": "assistant", "content": assistant_message.content})
-            await cl.Message(content=assistant_message.content).send()
+        reasoning = getattr(assistant_message, "reasoning_content", None)
+        if reasoning:
+            async with cl.Step(name="🧠 Reasoning") as step:
+                step.output = reasoning
 
         if assistant_message.tool_calls:
-            # Append the assistant's tool call message to history
+            if assistant_message.content:
+                async with cl.Step(name="💭 Thinking") as step:
+                    step.output = assistant_message.content
+
             messages.append(assistant_message.model_dump(exclude_unset=True))
 
             for tool_call in assistant_message.tool_calls:
@@ -105,7 +179,6 @@ async def on_message(message: cl.Message):
                     try:
                         result = await session.call_tool(name, arguments)
 
-                        # Extract text
                         result_text = "\n".join(
                             [b.text for b in result.content if hasattr(b, "text")]
                         )
@@ -131,6 +204,9 @@ async def on_message(message: cl.Message):
                             }
                         )
         else:
+            if assistant_message.content:
+                messages.append({"role": "assistant", "content": assistant_message.content})
+                await cl.Message(content=assistant_message.content).send()
             break
 
     cl.user_session.set("messages", messages)
@@ -139,6 +215,10 @@ async def on_message(message: cl.Message):
 @cl.on_chat_end
 async def on_chat_end():
     """Clean up the MCP connection on chat end."""
-    stack = cl.user_session.get("mcp_stack")
-    if stack:
-        await stack.aclose()
+    done: asyncio.Event | None = cl.user_session.get("mcp_done")
+    task: asyncio.Task | None = cl.user_session.get("mcp_task")
+    if done:
+        done.set()
+    if task:
+        with contextlib.suppress(Exception):
+            await task
