@@ -1,0 +1,10 @@
+id: "002"
+name: "Search known term"
+question: "Find documentation about Python setup in this project"
+expected_tools:
+  - name: search_docs
+    required: true
+quality_criteria:
+  - "Response references content actually returned by search_docs"
+  - "Does not invent document paths or content not in tool output"
+  - "Query argument passed to search_docs is relevant (contains 'python' or 'setup')"

@@ -1,0 +1,15 @@
+id: "004"
+name: "Multi-tool recommended flow"
+question: "I need to understand what ADR documents are available and read one of them"
+expected_tools:
+  - name: search_docs
+    required: true
+  - name: get_document
+    required: true
+  - name: list_topics
+    required: false
+quality_criteria:
+  - "Calls search_docs or list_topics to discover relevant documents before retrieving"
+  - "Calls get_document on at least one discovered document path"
+  - "Response contains content extracted from the actual document via tool, not hallucinated"
+  - "Follows discover-then-retrieve pattern (search before get_document)"

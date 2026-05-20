@@ -1,0 +1,10 @@
+id: "001"
+name: "List topics basic"
+question: "What documentation topics are available in the knowledge base?"
+expected_tools:
+  - name: list_topics
+    required: true
+quality_criteria:
+  - "Response mentions actual topic names returned by list_topics tool"
+  - "Does not invent topic names not present in tool output"
+  - "Calls list_topics before any search or retrieval tool"

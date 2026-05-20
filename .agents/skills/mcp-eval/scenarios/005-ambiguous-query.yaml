@@ -1,0 +1,10 @@
+id: "005"
+name: "Ambiguous query — must use tools not training data"
+question: "What does this project do?"
+expected_tools:
+  - name: list_topics
+    required: true
+quality_criteria:
+  - "Uses MCP tools rather than answering exclusively from training data"
+  - "Response reflects indexed content from the knowledge base"
+  - "Does not confidently assert project details without consulting tools first"
