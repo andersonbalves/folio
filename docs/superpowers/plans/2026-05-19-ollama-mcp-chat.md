@@ -12,16 +12,17 @@
 
 ## File Structure
 
-| Path | Action | Responsibility |
-|------|--------|----------------|
-| `scripts/chat.py` | Create | Entire script — inline deps, helpers, classes, REPL, main |
-| `packages/mcp-server/tests/test_chat_helpers.py` | Create | Unit tests for pure helper functions |
+| Path                                             | Action | Responsibility                                            |
+| ------------------------------------------------ | ------ | --------------------------------------------------------- |
+| `scripts/chat.py`                                | Create | Entire script — inline deps, helpers, classes, REPL, main |
+| `packages/mcp-server/tests/test_chat_helpers.py` | Create | Unit tests for pure helper functions                      |
 
 ---
 
 ### Task 1: Scaffold the script
 
 **Files:**
+
 - Create: `scripts/chat.py`
 
 - [ ] **Step 1: Create `scripts/chat.py` with skeleton**
@@ -48,7 +49,7 @@ from fastmcp.client.client import CallToolResult
 
 _PROJECT_ROOT = Path(__file__).parent.parent
 
-DEFAULT_MODEL = "qwen3:8b"
+DEFAULT_MODEL = "qwen2.5:7b"
 DEFAULT_MCP_COMMAND = "uv run folio-mcp"
 DEFAULT_SYSTEM = (
     "You are a helpful assistant with access to the Folio internal knowledge base. "
@@ -60,7 +61,7 @@ DEFAULT_SYSTEM = (
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Chat with folio docs via Ollama + MCP")
-    parser.add_argument("--model", default=DEFAULT_MODEL, help="Ollama model (default: qwen3:8b)")
+    parser.add_argument("--model", default=DEFAULT_MODEL, help="Ollama model (default: qwen2.5:7b)")
     parser.add_argument("--mcp-command", default=DEFAULT_MCP_COMMAND, help="Command to spawn MCP server")
     parser.add_argument("--system", default=DEFAULT_SYSTEM, help="System prompt override")
     return parser.parse_args()
@@ -84,6 +85,7 @@ if __name__ == "__main__":
 Run: `uv run scripts/chat.py --help`
 
 Expected output contains:
+
 ```
 usage: chat.py [-h] [--model MODEL] [--mcp-command MCP_COMMAND] [--system SYSTEM]
 ```
@@ -100,6 +102,7 @@ git commit -m "feat(scripts): scaffold chat.py with argparse and PEP 723 deps"
 ### Task 2: Helper functions + tests
 
 **Files:**
+
 - Modify: `scripts/chat.py` (add helpers)
 - Create: `packages/mcp-server/tests/test_chat_helpers.py`
 
@@ -255,6 +258,7 @@ git commit -m "feat(scripts): add mcp_tool_to_ollama and extract_result_text hel
 ### Task 3: MCPBridge
 
 **Files:**
+
 - Modify: `scripts/chat.py` (add `MCPBridge` class)
 
 - [ ] **Step 1: Add `MCPBridge` class to `scripts/chat.py`**
@@ -297,6 +301,7 @@ git commit -m "feat(scripts): add MCPBridge wrapping FastMCP Client"
 ### Task 4: OllamaAgent
 
 **Files:**
+
 - Modify: `scripts/chat.py` (add `OllamaAgent` class)
 
 - [ ] **Step 1: Add `OllamaAgent` class to `scripts/chat.py`**
@@ -363,6 +368,7 @@ git commit -m "feat(scripts): add OllamaAgent with tool-calling loop"
 ### Task 5: REPL and main_async()
 
 **Files:**
+
 - Modify: `scripts/chat.py` (add `repl()`, update `main_async()`)
 
 - [ ] **Step 1: Add `import readline` at top of imports**
@@ -463,6 +469,7 @@ git commit -m "feat(scripts): add REPL loop and wire main_async with MCPBridge +
 ### Task 6: Smoke test and final commit
 
 **Files:**
+
 - None (testing only)
 
 - [ ] **Step 1: Run full test suite**
@@ -481,13 +488,14 @@ Expected: help text with no import errors.
 
 - [ ] **Step 3: Smoke test — Ollama running, folio-mcp reachable**
 
-Prerequisites: `ollama serve` running, `ollama pull qwen3:8b` completed.
+Prerequisites: `ollama serve` running, `ollama pull qwen2.5:7b` completed.
 
 Run: `uv run scripts/chat.py`
 
 Expected:
+
 ```
-Model: qwen3:8b
+Model: qwen2.5:7b
 Connecting to folio-mcp… connected.
 
 Tools: list_topics, search_docs, get_document
@@ -526,9 +534,10 @@ git commit -m "feat(scripts): ollama mcp chat REPL complete"
 ## Self-Review
 
 **Spec coverage:**
+
 - ✅ Conversational REPL with message history — `OllamaAgent._messages`
 - ✅ MCP client via stdio — `Client(mcp_config)` with MCPConfig dict
-- ✅ Ollama model default `qwen3:8b` — `DEFAULT_MODEL`
+- ✅ Ollama model default `qwen2.5:7b` — `DEFAULT_MODEL`
 - ✅ PEP 723 inline deps — header in Task 1
 - ✅ `--model`, `--mcp-command`, `--system` args — `parse_args()`
 - ✅ Tool calls printed inline — `[tool: name(args)]` in `OllamaAgent.run()`
@@ -542,6 +551,7 @@ git commit -m "feat(scripts): ollama mcp chat REPL complete"
 - ✅ System prompt instructs proactive tool use — `DEFAULT_SYSTEM`
 
 **Type consistency:**
+
 - `MCPBridge.__init__` takes `Client` ✅ — `main_async` passes `client` from `async with Client(...) as client`
 - `OllamaAgent.__init__` takes `MCPBridge` ✅ — `main_async` passes `bridge`
 - `repl()` takes `OllamaAgent, list[mcp.types.Tool]` ✅ — `main_async` passes `agent, tools`

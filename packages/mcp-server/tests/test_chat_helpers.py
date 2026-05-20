@@ -245,6 +245,36 @@ class TestOllamaAgentDebug:
         mock_printer.request.assert_called_once_with("list_topics", {})
         mock_printer.response.assert_called_once_with("list_topics", "result")
 
+    def test_legacy_print_path_when_printer_disabled(self, capsys):
+        import asyncio
+        from unittest.mock import AsyncMock, patch
+
+        bridge = MagicMock()
+        bridge.call_tool = AsyncMock(return_value="tool result here")
+
+        tool_call = MagicMock()
+        tool_call.function.name = "search_docs"
+        tool_call.function.arguments = {"query": "test"}
+
+        responses = iter(
+            [
+                self._make_response(None, [tool_call]),
+                self._make_response("Final answer.", None),
+            ]
+        )
+
+        async def fake_to_thread(fn, *args, **kwargs):
+            return next(responses)
+
+        # No printer passed → defaults to DebugPrinter(enabled=False) → legacy path
+        agent = OllamaAgent("model", bridge, [])
+        with patch("asyncio.to_thread", side_effect=fake_to_thread):
+            asyncio.run(agent.run("find docs"))
+
+        out = capsys.readouterr().out
+        assert "[tool: search_docs" in out
+        assert "tool result here" in out
+
 
 class TestCLI:
     def test_default_system_is_minimal(self):
