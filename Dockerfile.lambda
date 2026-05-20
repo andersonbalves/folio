@@ -1,7 +1,8 @@
 FROM python:3.14-rc-slim
 
 # Install Lambda Web Adapter
-COPY --from=public.ecr.aws/awsguru/aws-lambda-adapter:0.8.4 /opt/extensions/lambda-adapter /opt/extensions/lambda-adapter
+COPY --from=public.ecr.aws/awsguru/aws-lambda-adapter:0.9.0 /lambda-adapter /opt/extensions/lambda-adapter
+RUN chmod +x /opt/extensions/lambda-adapter
 
 ENV PORT=8080
 ENV UV_COMPILE_BYTECODE=1
@@ -12,19 +13,10 @@ RUN pip install uv
 
 WORKDIR /app
 
-# Copy dependency files for workspace
-COPY pyproject.toml uv.lock .python-version ./
-COPY packages/mcp-server/pyproject.toml packages/mcp-server/
-COPY packages/core/pyproject.toml packages/core/
-COPY packages/sync/pyproject.toml packages/sync/
-
-# Sync dependencies
-RUN uv sync --frozen --no-install-project
-
 # Copy project code
 COPY . /app
 
-# Final sync
+# Sync dependencies
 RUN uv sync --frozen
 
 # Start the SSE server
