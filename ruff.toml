@@ -16,6 +16,7 @@ convention = "google"
 
 [lint.per-file-ignores]
 "packages/*/tests/*.py" = ["D"]
+"scripts/web_chat.py" = ["E402"]  # monkey-patch must precede asyncio/chainlit imports
 
 [lint.isort]
 known-first-party = ["folio"]
