@@ -118,12 +118,14 @@ class OllamaAgent:
         bridge: MCPBridge,
         tools: list[mcp.types.Tool],
         system: str = DEFAULT_SYSTEM,
+        printer: DebugPrinter | None = None,
     ) -> None:
-        """Initialise with model, bridge, tools and an optional system prompt."""
+        """Initialise with model, bridge, tools, optional system prompt and debug printer."""
         self._model = model
         self._bridge = bridge
         self._ollama_tools = [mcp_tool_to_ollama(t) for t in tools]
         self._messages: list[Any] = [{"role": "system", "content": system}]
+        self._printer = printer if printer is not None else DebugPrinter(enabled=False)
 
     async def run(self, user_msg: str) -> str:
         """Append user message and run the agent loop until a final text response."""
@@ -142,13 +144,20 @@ class OllamaAgent:
             if not assistant_msg.tool_calls:
                 return assistant_msg.content or ""
 
+            if assistant_msg.content:
+                self._printer.thinking(assistant_msg.content)
+
             for tool_call in assistant_msg.tool_calls:
                 name = tool_call.function.name
                 args = tool_call.function.arguments or {}
-                print(f"  [tool: {name}({args})]")  # noqa: T201
+                if not self._printer.enabled:
+                    print(f"  [tool: {name}({args})]")  # noqa: T201
+                self._printer.request(name, args)
                 result_text = await self._bridge.call_tool(name, args)
-                truncated = result_text[:500] + "…" if len(result_text) > 500 else result_text
-                print(f"  → {truncated}")  # noqa: T201
+                if not self._printer.enabled:
+                    truncated = result_text[:500] + "…" if len(result_text) > 500 else result_text
+                    print(f"  → {truncated}")  # noqa: T201
+                self._printer.response(name, result_text)
                 self._messages.append({"role": "tool", "content": result_text})
 
 

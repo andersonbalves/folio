@@ -22,6 +22,7 @@ _spec.loader.exec_module(_mod)  # type: ignore[union-attr]
 mcp_tool_to_ollama = _mod.mcp_tool_to_ollama
 extract_result_text = _mod.extract_result_text
 DebugPrinter = _mod.DebugPrinter
+OllamaAgent = _mod.OllamaAgent
 
 
 def _make_tool(name: str, description: str, schema: dict) -> mcp.types.Tool:
@@ -159,3 +160,85 @@ class TestDebugPrinter:
         printer.response("tool", text)
         out = capsys.readouterr().out
         assert "42" in out
+
+
+class TestOllamaAgentDebug:
+    def _make_response(self, content: str | None, tool_calls=None):
+        msg = MagicMock()
+        msg.content = content
+        msg.tool_calls = tool_calls
+        resp = MagicMock()
+        resp.message = msg
+        return resp
+
+    def test_accepts_printer_parameter(self):
+        bridge = MagicMock()
+        printer = DebugPrinter(enabled=False)
+        agent = OllamaAgent("model", bridge, [], printer=printer)
+        assert agent._printer is printer
+
+    def test_none_printer_defaults_to_disabled(self):
+        bridge = MagicMock()
+        agent = OllamaAgent("model", bridge, [])
+        assert isinstance(agent._printer, DebugPrinter)
+        assert agent._printer.enabled is False
+
+    def test_thinking_called_when_content_before_tool_calls(self):
+        import asyncio
+        from unittest.mock import AsyncMock, patch
+
+        bridge = MagicMock()
+        bridge.call_tool = AsyncMock(return_value="tool result")
+        mock_printer = MagicMock()
+        mock_printer.enabled = True
+
+        tool_call = MagicMock()
+        tool_call.function.name = "search_docs"
+        tool_call.function.arguments = {"query": "k8s"}
+
+        responses = iter(
+            [
+                self._make_response("Let me look that up.", [tool_call]),
+                self._make_response("Here is the answer.", None),
+            ]
+        )
+
+        async def fake_to_thread(fn, **kwargs):
+            return next(responses)
+
+        agent = OllamaAgent("model", bridge, [], printer=mock_printer)
+        with patch("asyncio.to_thread", side_effect=fake_to_thread):
+            asyncio.run(agent.run("find k8s docs"))
+
+        mock_printer.thinking.assert_called_once_with("Let me look that up.")
+        mock_printer.request.assert_called_once_with("search_docs", {"query": "k8s"})
+        mock_printer.response.assert_called_once_with("search_docs", "tool result")
+
+    def test_thinking_not_called_when_no_content(self):
+        import asyncio
+        from unittest.mock import AsyncMock, patch
+
+        bridge = MagicMock()
+        bridge.call_tool = AsyncMock(return_value="result")
+        mock_printer = MagicMock()
+        mock_printer.enabled = True
+
+        tool_call = MagicMock()
+        tool_call.function.name = "list_topics"
+        tool_call.function.arguments = {}
+
+        responses = iter(
+            [
+                self._make_response(None, [tool_call]),
+                self._make_response("Done.", None),
+            ]
+        )
+
+        async def fake_to_thread(fn, **kwargs):
+            return next(responses)
+
+        agent = OllamaAgent("model", bridge, [], printer=mock_printer)
+        with patch("asyncio.to_thread", side_effect=fake_to_thread):
+            asyncio.run(agent.run("list topics"))
+
+        mock_printer.thinking.assert_not_called()
