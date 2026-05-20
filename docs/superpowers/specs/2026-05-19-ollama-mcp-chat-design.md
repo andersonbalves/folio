@@ -52,11 +52,11 @@ Run via: `uv run scripts/chat.py`
 
 ## CLI Arguments
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--model` | `qwen3:8b` | Ollama model name |
+| Flag            | Default            | Description                 |
+| --------------- | ------------------ | --------------------------- |
+| `--model`       | `qwen2.5:7b`       | Ollama model name           |
 | `--mcp-command` | `uv run folio-mcp` | Command to spawn MCP server |
-| `--system` | built-in | Override system prompt |
+| `--system`      | built-in           | Override system prompt      |
 
 ## Data Flow
 
@@ -94,12 +94,12 @@ user input
 
 ## Error Handling
 
-| Scenario | Behavior |
-|----------|----------|
-| Ollama not running | `ConnectionRefusedError` caught at startup → message + exit(1) |
-| `folio-mcp` fails to start | FastMCP raises → caught → message + exit(1) |
-| Tool call fails | Error string injected as tool result → model handles gracefully |
-| Model not found in Ollama | `ollama` lib raises → caught → message + exit(1) |
+| Scenario                   | Behavior                                                        |
+| -------------------------- | --------------------------------------------------------------- |
+| Ollama not running         | `ConnectionRefusedError` caught at startup → message + exit(1)  |
+| `folio-mcp` fails to start | FastMCP raises → caught → message + exit(1)                     |
+| Tool call fails            | Error string injected as tool result → model handles gracefully |
+| Model not found in Ollama  | `ollama` lib raises → caught → message + exit(1)                |
 
 ## UX Details
 
@@ -111,7 +111,7 @@ user input
 
 ## Recommended Model
 
-**Default:** `qwen3:8b` — most reliable tool calling, ~6GB VRAM, fits RTX 4070 laptop (8GB).
+**Default:** `qwen2.5:7b` — most reliable tool calling, ~6GB VRAM, fits RTX 4070 laptop (8GB).
 **Alternative:** `llama3.1:8b` — faster inference, slightly less stable tool calling.
 
 ## File Location

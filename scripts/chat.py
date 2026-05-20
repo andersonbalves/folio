@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import readline  # noqa: F401 — enables readline history for input()
 import shlex
 import sys
@@ -18,6 +19,44 @@ import mcp.types
 import ollama
 from fastmcp import Client
 from fastmcp.client.client import CallToolResult
+
+_RESET = "\033[0m"
+_YELLOW = "\033[33m"
+_CYAN = "\033[36m"
+_GREEN = "\033[32m"
+_DIM = "\033[2m"
+
+
+class DebugPrinter:
+    """Prints color-coded agent debug output. All methods are no-ops when disabled."""
+
+    def __init__(self, enabled: bool) -> None:
+        """Store whether debug output is enabled."""
+        self._enabled = enabled
+
+    @property
+    def enabled(self) -> bool:
+        """Return True if debug output is enabled."""
+        return self._enabled
+
+    def thinking(self, text: str) -> None:
+        """Print model reasoning text, if enabled."""
+        if not self._enabled:
+            return
+        print(f"\n{_YELLOW}[thinking]{_RESET} {text}\n")  # noqa: T201
+
+    def request(self, name: str, args: dict[str, Any]) -> None:
+        """Print a tool request with its arguments as JSON, if enabled."""
+        if not self._enabled:
+            return
+        print(f"{_CYAN}→ REQUEST{_RESET} {name}({json.dumps(args, ensure_ascii=False)})")  # noqa: T201
+
+    def response(self, name: str, text: str) -> None:
+        """Print a tool response with character count, if enabled."""
+        if not self._enabled:
+            return
+        print(f"{_GREEN}← RESPONSE{_RESET} {name} {_DIM}({len(text)} chars){_RESET}\n{text}\n")  # noqa: T201
+
 
 _PROJECT_ROOT = Path(__file__).parent.parent
 
@@ -60,13 +99,10 @@ class MCPBridge:
             return f"[tool error: {exc}]"
 
 
-DEFAULT_MODEL = "qwen3:8b"
+DEFAULT_MODEL = "qwen2.5:7b"
 DEFAULT_MCP_COMMAND = "uv run folio-mcp"
 DEFAULT_SYSTEM = (
-    "You are a helpful assistant with access to the Folio internal knowledge base. "
-    "When the user asks about documentation, always use the available tools. "
-    "Recommended flow: 1) list_topics to discover vocabulary, "
-    "2) search_docs with exact terms, 3) get_document to read full content."
+    "You are a helpful assistant. Use the available tools when they would help answer the question."
 )
 
 
@@ -79,12 +115,14 @@ class OllamaAgent:
         bridge: MCPBridge,
         tools: list[mcp.types.Tool],
         system: str = DEFAULT_SYSTEM,
+        printer: DebugPrinter | None = None,
     ) -> None:
-        """Initialise with model, bridge, tools and an optional system prompt."""
+        """Initialise with model, bridge, tools, optional system prompt and debug printer."""
         self._model = model
         self._bridge = bridge
         self._ollama_tools = [mcp_tool_to_ollama(t) for t in tools]
         self._messages: list[Any] = [{"role": "system", "content": system}]
+        self._printer = printer if printer is not None else DebugPrinter(enabled=False)
 
     async def run(self, user_msg: str) -> str:
         """Append user message and run the agent loop until a final text response."""
@@ -103,13 +141,22 @@ class OllamaAgent:
             if not assistant_msg.tool_calls:
                 return assistant_msg.content or ""
 
+            if assistant_msg.content:
+                self._printer.thinking(assistant_msg.content)
+
             for tool_call in assistant_msg.tool_calls:
                 name = tool_call.function.name
                 args = tool_call.function.arguments or {}
-                print(f"  [tool: {name}({args})]")  # noqa: T201
+                if self._printer.enabled:
+                    self._printer.request(name, args)
+                else:
+                    print(f"  [tool: {name}({args})]")  # noqa: T201
                 result_text = await self._bridge.call_tool(name, args)
-                truncated = result_text[:500] + "…" if len(result_text) > 500 else result_text
-                print(f"  → {truncated}")  # noqa: T201
+                if self._printer.enabled:
+                    self._printer.response(name, result_text)
+                else:
+                    truncated = result_text[:500] + "…" if len(result_text) > 500 else result_text
+                    print(f"  → {truncated}")  # noqa: T201
                 self._messages.append({"role": "tool", "content": result_text})
 
 
@@ -151,11 +198,17 @@ async def repl(agent: OllamaAgent, tools: list[mcp.types.Tool]) -> None:
 def parse_args() -> argparse.Namespace:
     """Parse CLI arguments."""
     parser = argparse.ArgumentParser(description="Chat with folio docs via Ollama + MCP")
-    parser.add_argument("--model", default=DEFAULT_MODEL, help="Ollama model (default: qwen3:8b)")
+    parser.add_argument("--model", default=DEFAULT_MODEL, help="Ollama model (default: qwen2.5:7b)")
     parser.add_argument(
         "--mcp-command", default=DEFAULT_MCP_COMMAND, help="Command to spawn MCP server"
     )
     parser.add_argument("--system", default=DEFAULT_SYSTEM, help="System prompt override")
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        default=False,
+        help="Print full MCP request/response and model reasoning with color",
+    )
     return parser.parse_args()
 
 
@@ -186,7 +239,8 @@ async def main_async(args: argparse.Namespace) -> None:
             print("connected.")  # noqa: T201
             bridge = MCPBridge(client)
             tools = await bridge.list_tools()
-            agent = OllamaAgent(args.model, bridge, tools, system=args.system)
+            printer = DebugPrinter(enabled=args.debug)
+            agent = OllamaAgent(args.model, bridge, tools, system=args.system, printer=printer)
             await repl(agent, tools)
     except ConnectionRefusedError:
         print("\nOllama not running. Start with: ollama serve", file=sys.stderr)  # noqa: T201
