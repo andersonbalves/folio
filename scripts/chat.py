@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 import mcp.types
+from fastmcp import Client
 from fastmcp.client.client import CallToolResult
 
 _PROJECT_ROOT = Path(__file__).parent.parent
@@ -33,6 +34,26 @@ def extract_result_text(result: CallToolResult) -> str:
     """Extract concatenated text from a CallToolResult."""
     parts = [block.text for block in result.content if isinstance(block, mcp.types.TextContent)]
     return "\n".join(parts) if parts else "(no text result)"
+
+
+class MCPBridge:
+    """Wraps a connected FastMCP Client, exposing tool list/call operations."""
+
+    def __init__(self, client: Client) -> None:
+        """Store the already-connected MCP client."""
+        self._client = client
+
+    async def list_tools(self) -> list[mcp.types.Tool]:
+        """Return all tools from the connected MCP server."""
+        return await self._client.list_tools()
+
+    async def call_tool(self, name: str, arguments: dict[str, Any]) -> str:
+        """Call a named tool and return its text result."""
+        try:
+            result = await self._client.call_tool(name, arguments, raise_on_error=False)
+            return extract_result_text(result)
+        except Exception as exc:
+            return f"[tool error: {exc}]"
 
 
 DEFAULT_MODEL = "qwen3:8b"
