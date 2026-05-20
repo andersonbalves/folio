@@ -166,8 +166,11 @@ async def run_scenario(
             tool_results = []
             for block in response.content:
                 if block.type == "tool_use":
-                    result = await bridge.call_tool(block.name, block.input or {})
-                    result_text = _extract_mcp_result(result)
+                    try:
+                        result = await bridge.call_tool(block.name, block.input or {})
+                        result_text = _extract_mcp_result(result)
+                    except Exception as exc:
+                        result_text = f"[tool error: {exc}]"
                     tool_calls.append(
                         ToolCall(
                             tool=block.name,
@@ -184,6 +187,7 @@ async def run_scenario(
                     )
             messages.append({"role": "user", "content": tool_results})
         else:
+            print(f"  Warning: unexpected stop_reason={response.stop_reason!r}")
             break
 
     trigger = check_trigger_assertions(tool_calls, scenario.expected_tools)
