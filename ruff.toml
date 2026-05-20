@@ -18,6 +18,7 @@ convention = "google"
 "packages/*/tests/*.py" = ["D"]
 ".agents/*/scripts/test_*.py" = ["D"]
 "scripts/web_chat.py" = ["E402"]  # monkey-patch must precede asyncio/chainlit imports
+".agents/*/scripts/eval_*.py" = ["T201"]  # CLI scripts legitimately use print for output
 
 [lint.isort]
 known-first-party = ["folio"]
