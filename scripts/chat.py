@@ -10,7 +10,29 @@ import argparse
 import asyncio
 from pathlib import Path
 
+import mcp.types
+from fastmcp.client.client import CallToolResult
+
 _PROJECT_ROOT = Path(__file__).parent.parent
+
+
+def mcp_tool_to_ollama(tool: mcp.types.Tool) -> dict:
+    """Convert an MCP tool schema to Ollama's tool format."""
+    return {
+        "type": "function",
+        "function": {
+            "name": tool.name,
+            "description": tool.description or "",
+            "parameters": tool.inputSchema,
+        },
+    }
+
+
+def extract_result_text(result: CallToolResult) -> str:
+    """Extract concatenated text from a CallToolResult."""
+    parts = [block.text for block in result.content if isinstance(block, mcp.types.TextContent)]
+    return "\n".join(parts) if parts else "(no text result)"
+
 
 DEFAULT_MODEL = "qwen3:8b"
 DEFAULT_MCP_COMMAND = "uv run folio-mcp"
