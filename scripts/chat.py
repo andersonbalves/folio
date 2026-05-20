@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import readline  # noqa: F401 — enables readline history for input()
+import json
 import shlex
 import sys
 from pathlib import Path
@@ -18,6 +18,44 @@ import mcp.types
 import ollama
 from fastmcp import Client
 from fastmcp.client.client import CallToolResult
+
+_RESET = "\033[0m"
+_YELLOW = "\033[33m"
+_CYAN = "\033[36m"
+_GREEN = "\033[32m"
+_DIM = "\033[2m"
+
+
+class DebugPrinter:
+    """Prints color-coded agent debug output. All methods are no-ops when disabled."""
+
+    def __init__(self, enabled: bool) -> None:
+        """Store whether debug output is enabled."""
+        self._enabled = enabled
+
+    @property
+    def enabled(self) -> bool:
+        """Return True if debug output is enabled."""
+        return self._enabled
+
+    def thinking(self, text: str) -> None:
+        """Print model reasoning text, if enabled."""
+        if not self._enabled:
+            return
+        print(f"\n{_YELLOW}[thinking]{_RESET} {text}\n")  # noqa: T201
+
+    def request(self, name: str, args: dict[str, Any]) -> None:
+        """Print a tool request with its arguments as JSON, if enabled."""
+        if not self._enabled:
+            return
+        print(f"{_CYAN}→ REQUEST{_RESET} {name}({json.dumps(args, ensure_ascii=False)})")  # noqa: T201
+
+    def response(self, name: str, text: str) -> None:
+        """Print a tool response with character count, if enabled."""
+        if not self._enabled:
+            return
+        print(f"{_GREEN}← RESPONSE{_RESET} {_DIM}({len(text)} chars){_RESET}\n{text}\n")  # noqa: T201
+
 
 _PROJECT_ROOT = Path(__file__).parent.parent
 
@@ -60,7 +98,7 @@ class MCPBridge:
             return f"[tool error: {exc}]"
 
 
-DEFAULT_MODEL = "qwen3:8b"
+DEFAULT_MODEL = "qwen2.5:7b"
 DEFAULT_MCP_COMMAND = "uv run folio-mcp"
 DEFAULT_SYSTEM = (
     "You are a helpful assistant with access to the Folio internal knowledge base. "
@@ -151,7 +189,7 @@ async def repl(agent: OllamaAgent, tools: list[mcp.types.Tool]) -> None:
 def parse_args() -> argparse.Namespace:
     """Parse CLI arguments."""
     parser = argparse.ArgumentParser(description="Chat with folio docs via Ollama + MCP")
-    parser.add_argument("--model", default=DEFAULT_MODEL, help="Ollama model (default: qwen3:8b)")
+    parser.add_argument("--model", default=DEFAULT_MODEL, help="Ollama model (default: qwen2.5:7b)")
     parser.add_argument(
         "--mcp-command", default=DEFAULT_MCP_COMMAND, help="Command to spawn MCP server"
     )

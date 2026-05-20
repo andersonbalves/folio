@@ -21,6 +21,7 @@ _spec.loader.exec_module(_mod)  # type: ignore[union-attr]
 
 mcp_tool_to_ollama = _mod.mcp_tool_to_ollama
 extract_result_text = _mod.extract_result_text
+DebugPrinter = _mod.DebugPrinter
 
 
 def _make_tool(name: str, description: str, schema: dict) -> mcp.types.Tool:
@@ -103,3 +104,57 @@ class TestExtractResultText:
             meta=None,
         )
         assert extract_result_text(result) == "actual text"
+
+
+class TestDebugPrinter:
+    def test_disabled_thinking_produces_no_output(self, capsys):
+        printer = DebugPrinter(enabled=False)
+        printer.thinking("some reasoning")
+        assert capsys.readouterr().out == ""
+
+    def test_disabled_request_produces_no_output(self, capsys):
+        printer = DebugPrinter(enabled=False)
+        printer.request("search_docs", {"query": "k8s"})
+        assert capsys.readouterr().out == ""
+
+    def test_disabled_response_produces_no_output(self, capsys):
+        printer = DebugPrinter(enabled=False)
+        printer.response("search_docs", "some result")
+        assert capsys.readouterr().out == ""
+
+    def test_enabled_false_property(self):
+        printer = DebugPrinter(enabled=False)
+        assert printer.enabled is False
+
+    def test_enabled_true_property(self):
+        printer = DebugPrinter(enabled=True)
+        assert printer.enabled is True
+
+    def test_enabled_thinking_contains_text(self, capsys):
+        printer = DebugPrinter(enabled=True)
+        printer.thinking("Let me search that.")
+        out = capsys.readouterr().out
+        assert "thinking" in out
+        assert "Let me search that." in out
+
+    def test_enabled_request_contains_name_and_args_json(self, capsys):
+        printer = DebugPrinter(enabled=True)
+        printer.request("search_docs", {"query": "kubernetes"})
+        out = capsys.readouterr().out
+        assert "REQUEST" in out
+        assert "search_docs" in out
+        assert '"kubernetes"' in out
+
+    def test_enabled_response_contains_name_and_text(self, capsys):
+        printer = DebugPrinter(enabled=True)
+        printer.response("search_docs", "Full result text here.")
+        out = capsys.readouterr().out
+        assert "RESPONSE" in out
+        assert "Full result text here." in out
+
+    def test_enabled_response_shows_char_count(self, capsys):
+        printer = DebugPrinter(enabled=True)
+        text = "x" * 42
+        printer.response("tool", text)
+        out = capsys.readouterr().out
+        assert "42" in out
