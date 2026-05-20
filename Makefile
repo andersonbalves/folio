@@ -79,6 +79,16 @@ serve:
 chat:
 	uv run scripts/chat.py $(ARGS)
 
+chat-web:
+	uv run chainlit run scripts/web_chat.py -w
+
+start-localstack:
+	uv run localstack start -d
+	uv run localstack wait -t 60
+
+deploy-mcp:
+	bash scripts/deploy_mcp_lwa.sh
+
 # === Quality ===
 test:
 	uv run pytest -v
