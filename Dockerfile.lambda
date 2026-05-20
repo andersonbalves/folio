@@ -13,19 +13,10 @@ RUN pip install uv
 
 WORKDIR /app
 
-# Copy dependency files for workspace
-COPY pyproject.toml uv.lock .python-version ./
-COPY packages/mcp-server/pyproject.toml packages/mcp-server/
-COPY packages/core/pyproject.toml packages/core/
-COPY packages/sync/pyproject.toml packages/sync/
-
-# Sync dependencies
-RUN uv sync --frozen --no-install-project
-
 # Copy project code
 COPY . /app
 
-# Final sync
+# Sync dependencies
 RUN uv sync --frozen
 
 # Start the SSE server
