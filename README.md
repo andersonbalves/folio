@@ -33,7 +33,10 @@ make bootstrap
 ### Desenvolvimento
 
 - `make serve`: Roda o servidor MCP localmente via stdio.
-- `make chat`: Abre REPL conversacional com modelo Ollama local + ferramentas MCP (requer `ollama serve` rodando).
+- `make chat`: Abre REPL conversacional no terminal com Ollama + MCP (legado).
+- `make chat-web`: Abre a interface Web do agente conversacional (Chainlit) conectada ao MCP hospedado no LocalStack.
+- `make start-localstack`: Sobe o container do Localstack via CLI local.
+- `make deploy-mcp`: Faz o build da imagem Docker do MCP com Lambda Web Adapter (LWA) e publica como Lambda Function URL no Localstack via `awslocal`.
 - `make seed`: Faz upload dos arquivos `.md` de `seed/` para o bucket S3 local.
 - `make sync-full`: Executa uma sincronização manual completa S3 -> DB.
 - `make migrate`: Aplica migrations SQL.
