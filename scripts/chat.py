@@ -150,14 +150,16 @@ class OllamaAgent:
             for tool_call in assistant_msg.tool_calls:
                 name = tool_call.function.name
                 args = tool_call.function.arguments or {}
-                if not self._printer.enabled:
+                if self._printer.enabled:
+                    self._printer.request(name, args)
+                else:
                     print(f"  [tool: {name}({args})]")  # noqa: T201
-                self._printer.request(name, args)
                 result_text = await self._bridge.call_tool(name, args)
-                if not self._printer.enabled:
+                if self._printer.enabled:
+                    self._printer.response(name, result_text)
+                else:
                     truncated = result_text[:500] + "…" if len(result_text) > 500 else result_text
                     print(f"  → {truncated}")  # noqa: T201
-                self._printer.response(name, result_text)
                 self._messages.append({"role": "tool", "content": result_text})
 
 

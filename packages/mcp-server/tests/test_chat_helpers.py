@@ -203,7 +203,7 @@ class TestOllamaAgentDebug:
             ]
         )
 
-        async def fake_to_thread(fn, **kwargs):
+        async def fake_to_thread(fn, *args, **kwargs):
             return next(responses)
 
         agent = OllamaAgent("model", bridge, [], printer=mock_printer)
@@ -234,7 +234,7 @@ class TestOllamaAgentDebug:
             ]
         )
 
-        async def fake_to_thread(fn, **kwargs):
+        async def fake_to_thread(fn, *args, **kwargs):
             return next(responses)
 
         agent = OllamaAgent("model", bridge, [], printer=mock_printer)
@@ -242,3 +242,5 @@ class TestOllamaAgentDebug:
             asyncio.run(agent.run("list topics"))
 
         mock_printer.thinking.assert_not_called()
+        mock_printer.request.assert_called_once_with("list_topics", {})
+        mock_printer.response.assert_called_once_with("list_topics", "result")
