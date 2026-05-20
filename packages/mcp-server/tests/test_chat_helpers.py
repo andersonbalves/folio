@@ -150,6 +150,7 @@ class TestDebugPrinter:
         printer.response("search_docs", "Full result text here.")
         out = capsys.readouterr().out
         assert "RESPONSE" in out
+        assert "search_docs" in out
         assert "Full result text here." in out
 
     def test_enabled_response_shows_char_count(self, capsys):

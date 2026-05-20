@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import readline  # noqa: F401 — enables readline history for input()
 import shlex
 import sys
 from pathlib import Path
@@ -54,7 +55,7 @@ class DebugPrinter:
         """Print a tool response with character count, if enabled."""
         if not self._enabled:
             return
-        print(f"{_GREEN}← RESPONSE{_RESET} {_DIM}({len(text)} chars){_RESET}\n{text}\n")  # noqa: T201
+        print(f"{_GREEN}← RESPONSE{_RESET} {name} {_DIM}({len(text)} chars){_RESET}\n{text}\n")  # noqa: T201
 
 
 _PROJECT_ROOT = Path(__file__).parent.parent
