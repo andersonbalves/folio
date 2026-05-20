@@ -14,7 +14,7 @@ sys.modules.setdefault("ollama", MagicMock())
 # Load scripts/chat.py as a module without executing main()
 _spec = importlib.util.spec_from_file_location(
     "chat",
-    Path(__file__).parents[3] / "scripts" / "chat.py",
+    Path(__file__).parents[4] / "scripts" / "chat.py",
 )
 _mod = importlib.util.module_from_spec(_spec)  # type: ignore[arg-type]
 _spec.loader.exec_module(_mod)  # type: ignore[union-attr]
