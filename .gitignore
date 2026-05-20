@@ -7,7 +7,6 @@ __pycache__
 dist/
 _k8s-clone/
 .secrets.yaml
-docs/superpowers/
 *:Zone.Identifier
 seed/
 /.python-version
@@ -234,8 +233,8 @@ __marimo__/
 .streamlit/secrets.toml
 
 # Project-specific
-.claude/
-.gemini/
+.claude/settings.local.json
+.gemini/settings.local.json
 .qlty/
 
 /XPTO.md
