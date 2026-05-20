@@ -16,7 +16,7 @@ Quality validation loop for `folio-mcp` tools. Tests trigger quality (does Claud
 
 ## How to Run
 
-**Prerequisite:** folio infrastructure running (`make up` or `docker-compose up -d`)
+**Prerequisite:** folio infrastructure running. Verify with `docker-compose ps` — both `postgres` and `localstack` containers must show `Up`. Start with `make up` or `docker-compose up -d` if not running.
 
 ```bash
 uv run .agents/skills/mcp-eval/scripts/eval_mcp.py \
@@ -68,3 +68,5 @@ quality_criteria:
   - "Specific verifiable statement about final_answer"
   - "Another criterion — prefer factual over stylistic"
 ```
+
+**Required flag semantics:** `required: true` means the tool MUST be called or the trigger check fails. `required: false` means the tool is expected but its absence is a warning only—the trigger still passes. Use `true` for critical path tools, `false` for contextual helpers.
