@@ -1,21 +1,19 @@
 # /// script
 # requires-python = ">=3.14"
-# dependencies = ["anthropic>=0.52", "fastmcp>=3.3.1", "pyyaml>=6.0"]
+# dependencies = ["pyyaml>=6.0"]
 # ///
-"""MCP eval runner — tests folio-mcp trigger and response quality."""
+"""MCP eval runner — tests folio-mcp trigger and response quality via claude -p CLI."""
 
 from __future__ import annotations
 
 import argparse
-import asyncio
 import json
+import subprocess
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
-import anthropic
-import mcp.types
 import yaml
-from fastmcp import Client
 
 # ---------------------------------------------------------------------------
 # Data classes
@@ -93,15 +91,6 @@ def load_scenario(path: Path) -> Scenario:
     )
 
 
-def mcp_tool_to_anthropic(mcp_tool) -> dict:
-    """Convert a FastMCP Tool schema to Anthropic tool format."""
-    return {
-        "name": mcp_tool.name,
-        "description": mcp_tool.description or "",
-        "input_schema": mcp_tool.inputSchema,
-    }
-
-
 def check_trigger_assertions(
     tool_calls: list[ToolCall],
     expected_tools: list[ExpectedTool],
@@ -123,72 +112,120 @@ def check_trigger_assertions(
     )
 
 
-def _extract_mcp_result(result) -> str:
-    parts = [block.text for block in result.content if isinstance(block, mcp.types.TextContent)]
-    return "\n".join(parts) if parts else "(no result)"
+def _build_mcp_config(mcp_command: str, project_root: Path) -> dict:
+    """Build MCP config dict for --mcp-config flag."""
+    parts = mcp_command.split()
+    return {
+        "mcpServers": {
+            "folio": {
+                "command": parts[0],
+                "args": parts[1:],
+                "cwd": str(project_root),
+            }
+        }
+    }
+
+
+def _normalize_tool_name(name: str) -> str:
+    """Strip mcp__<server>__ prefix added by Claude Code for MCP tools.
+
+    Claude Code prefixes MCP tools as mcp__<servername>__<toolname>.
+    Scenarios use short names (e.g. list_topics), so we strip the prefix
+    to allow matching. Non-MCP tools (Read, Bash, etc.) pass through unchanged.
+    """
+    if name.startswith("mcp__"):
+        parts = name.split("__", 2)
+        if len(parts) == 3:
+            return parts[2]
+    return name
+
+
+def parse_stream_json(output: str) -> tuple[list[ToolCall], str]:
+    """Parse claude --output-format stream-json output into tool calls and final answer.
+
+    Processes JSONL events:
+    - "assistant" events: capture tool_use blocks (name + args)
+    - "tool" events: capture result length for matching tool_use id
+    - "result" event: capture final answer
+    """
+    tool_calls: list[ToolCall] = []
+    tool_by_id: dict[str, ToolCall] = {}
+    final_answer = ""
+
+    for line in output.strip().splitlines():
+        if not line.strip():
+            continue
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+
+        event_type = event.get("type")
+
+        if event_type == "assistant":
+            for block in event.get("message", {}).get("content", []):
+                if block.get("type") == "tool_use":
+                    tc = ToolCall(
+                        tool=_normalize_tool_name(block["name"]),
+                        args=block.get("input", {}),
+                        result_len=0,
+                    )
+                    tool_calls.append(tc)
+                    tool_by_id[block.get("id", "")] = tc
+
+        elif event_type == "tool":
+            tool_id = event.get("id", "")
+            result_text = event.get("output", "") or ""
+            if tool_id in tool_by_id:
+                tool_by_id[tool_id].result_len = len(result_text)
+
+        elif event_type == "result":
+            final_answer = event.get("result", "")
+
+    return tool_calls, final_answer
 
 
 # ---------------------------------------------------------------------------
-# Agentic runner
+# Scenario runner
 # ---------------------------------------------------------------------------
 
 MODEL = "claude-haiku-4-5-20251001"
 
 
-async def run_scenario(
-    client: anthropic.AsyncAnthropic,
-    bridge: Client,
-    scenario: Scenario,
-    anthropic_tools: list[dict],
-) -> ScenarioResult:
-    """Run a single scenario: Haiku agentic loop against live folio-mcp."""
-    messages: list[dict] = [{"role": "user", "content": scenario.question}]
-    tool_calls: list[ToolCall] = []
-    final_answer = ""
+def run_scenario(scenario: Scenario, mcp_command: str, project_root: Path) -> ScenarioResult:
+    """Run a single scenario via claude -p CLI against live folio-mcp."""
+    config = _build_mcp_config(mcp_command, project_root)
 
-    while True:
-        response = await client.messages.create(
-            model=MODEL,
-            max_tokens=4096,
-            tools=anthropic_tools,
-            messages=messages,
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+        json.dump(config, f)
+        config_path = Path(f.name)
+
+    try:
+        proc = subprocess.run(
+            [
+                "claude",
+                "-p",
+                scenario.question,
+                "--output-format",
+                "stream-json",
+                "--verbose",
+                "--model",
+                MODEL,
+                "--mcp-config",
+                str(config_path),
+                "--strict-mcp-config",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=120,
         )
-
-        messages.append({"role": "assistant", "content": response.content})
-
-        if response.stop_reason == "end_turn":
-            for block in response.content:
-                if hasattr(block, "text"):
-                    final_answer = block.text
-            break
-
-        if response.stop_reason == "tool_use":
-            tool_results = []
-            for block in response.content:
-                if block.type == "tool_use":
-                    try:
-                        result = await bridge.call_tool(block.name, block.input or {})
-                        result_text = _extract_mcp_result(result)
-                    except Exception as exc:
-                        result_text = f"[tool error: {exc}]"
-                    tool_calls.append(
-                        ToolCall(
-                            tool=block.name,
-                            args=block.input or {},
-                            result_len=len(result_text),
-                        )
-                    )
-                    tool_results.append(
-                        {
-                            "type": "tool_result",
-                            "tool_use_id": block.id,
-                            "content": result_text,
-                        }
-                    )
-            messages.append({"role": "user", "content": tool_results})
-        else:
-            print(f"  Warning: unexpected stop_reason={response.stop_reason!r}")
-            break
+        if proc.returncode != 0:
+            print(f"  Warning: claude exited with code {proc.returncode}")
+            if proc.stderr:
+                print(f"  stderr: {proc.stderr[:200]}")
+        tool_calls, final_answer = parse_stream_json(proc.stdout)
+    finally:
+        config_path.unlink(missing_ok=True)
 
     trigger = check_trigger_assertions(tool_calls, scenario.expected_tools)
     return ScenarioResult(
@@ -228,8 +265,27 @@ def format_report(results: list[ScenarioResult]) -> str:
 # ---------------------------------------------------------------------------
 
 
-async def main_async(args: argparse.Namespace) -> None:
-    """Run all scenarios and print report."""
+def main() -> None:
+    """CLI entry point."""
+    parser = argparse.ArgumentParser(
+        description="MCP eval runner — validates folio-mcp tool quality"
+    )
+    parser.add_argument(
+        "--scenarios",
+        default=".agents/skills/mcp-eval/scenarios/",
+        help="Directory with YAML scenario files (default: .agents/skills/mcp-eval/scenarios/)",
+    )
+    parser.add_argument(
+        "--mcp-command",
+        default="uv run folio-mcp",
+        help="Command to spawn folio-mcp server (default: uv run folio-mcp)",
+    )
+    parser.add_argument(
+        "--output",
+        help="Write JSON results to this path (optional)",
+    )
+    args = parser.parse_args()
+
     scenarios_dir = Path(args.scenarios)
     scenario_files = sorted(scenarios_dir.glob("*.yaml"))
 
@@ -238,34 +294,16 @@ async def main_async(args: argparse.Namespace) -> None:
         return
 
     scenarios = [load_scenario(f) for f in scenario_files]
+    project_root = Path(__file__).parent.parent.parent.parent.parent
     print(f"Loaded {len(scenarios)} scenarios")
 
-    mcp_parts = args.mcp_command.split()
-    project_root = Path(__file__).parent.parent.parent.parent.parent
-    mcp_config = {
-        "mcpServers": {
-            "folio": {
-                "command": mcp_parts[0],
-                "args": mcp_parts[1:],
-                "cwd": str(project_root),
-            }
-        }
-    }
-
-    anthropic_client = anthropic.AsyncAnthropic()
-
-    async with Client(mcp_config) as bridge:
-        mcp_tools = await bridge.list_tools()
-        anthropic_tools = [mcp_tool_to_anthropic(t) for t in mcp_tools]
-        print(f"MCP tools: {[t.name for t in mcp_tools]}\n")
-
-        results: list[ScenarioResult] = []
-        for scenario in scenarios:
-            print(f"Running {scenario.id}: {scenario.name}...")
-            result = await run_scenario(anthropic_client, bridge, scenario, anthropic_tools)
-            results.append(result)
-            status = "PASS" if result.trigger.passed else "FAIL"
-            print(f"  Trigger: {status}  tools={[tc.tool for tc in result.tool_calls]}")
+    results: list[ScenarioResult] = []
+    for scenario in scenarios:
+        print(f"Running {scenario.id}: {scenario.name}...")
+        result = run_scenario(scenario, args.mcp_command, project_root)
+        results.append(result)
+        status = "PASS" if result.trigger.passed else "FAIL"
+        print(f"  Trigger: {status}  tools={[tc.tool for tc in result.tool_calls]}")
 
     print("\n" + format_report(results))
 
@@ -292,29 +330,6 @@ async def main_async(args: argparse.Namespace) -> None:
         ]
         Path(args.output).write_text(json.dumps(output_data, indent=2))
         print(f"\nResults saved to {args.output}")
-
-
-def main() -> None:
-    """CLI entry point."""
-    parser = argparse.ArgumentParser(
-        description="MCP eval runner — validates folio-mcp tool quality"
-    )
-    parser.add_argument(
-        "--scenarios",
-        default=".agents/skills/mcp-eval/scenarios/",
-        help="Directory with YAML scenario files (default: .agents/skills/mcp-eval/scenarios/)",
-    )
-    parser.add_argument(
-        "--mcp-command",
-        default="uv run folio-mcp",
-        help="Command to spawn folio-mcp server (default: uv run folio-mcp)",
-    )
-    parser.add_argument(
-        "--output",
-        help="Write JSON results to this path (optional)",
-    )
-    args = parser.parse_args()
-    asyncio.run(main_async(args))
 
 
 if __name__ == "__main__":
