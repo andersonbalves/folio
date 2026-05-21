@@ -1,14 +1,11 @@
 """End-to-end tests — require running LocalStack and Postgres.
 
 Run only after: make up && make migrate && make seed
-Skip by default in unit test runs.
 """
 
 import pytest
 
-pytestmark = pytest.mark.skip(
-    reason="requires running LocalStack and Postgres (make up && make migrate && make seed)"
-)
+pytestmark = pytest.mark.integration
 
 
 async def test_full_sync_indexes_s3_docs():

@@ -1,0 +1,10 @@
+id: "003"
+name: "Get document by path"
+question: "Retrieve the full content of the document at path `concepts/storage/persistent-volumes.md`"
+expected_tools:
+  - name: get_document
+    required: true
+quality_criteria:
+  - "Calls get_document with path='concepts/storage/persistent-volumes.md'"
+  - "Response includes actual content from the document (PersistentVolume, PV, PVC concepts)"
+  - "Does not skip the tool and answer from training data or filesystem access"

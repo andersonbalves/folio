@@ -27,7 +27,21 @@ dev = [
     "pre-commit>=4.6.0",
     "pytest>=9.0.3",
     "pytest-asyncio>=1.3.0",
+    "pytest-cov>=7.1.0",
     "python-dotenv>=1.2.2",
     "ruff>=0.15.13",
     "ty>=0.0.36",
 ]
+
+[tool.coverage.run]
+source = ["folio_core", "folio_sync", "folio_mcp"]
+omit = [
+    "*/config.py",
+    "*/db.py",
+    "*/s3_client.py",
+    "*/__init__.py",
+]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true

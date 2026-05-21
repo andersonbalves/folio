@@ -1,0 +1,10 @@
+id: "005"
+name: "Ambiguous query — must use tools not training data"
+question: "What topics are covered in the knowledge base?"
+expected_tools:
+  - name: list_topics
+    required: true
+quality_criteria:
+  - "Uses list_topics to enumerate topics from the indexed knowledge base"
+  - "Response reflects actual indexed content (Kubernetes topics), not generic descriptions"
+  - "Does not answer exclusively from training data without consulting tools"

@@ -23,6 +23,13 @@ repos:
         types: [python]
         pass_filenames: false
 
+      - id: unit-test-coverage
+        name: unit tests + coverage gate (80%)
+        entry: uv run pytest -m "not integration" --cov --cov-fail-under=80 -q --no-header
+        language: system
+        types: [python]
+        pass_filenames: false
+
   - repo: https://github.com/gitleaks/gitleaks
     rev: v8.18.2
     hooks:
