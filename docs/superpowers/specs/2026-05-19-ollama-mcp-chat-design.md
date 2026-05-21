@@ -54,7 +54,7 @@ Run via: `uv run scripts/chat.py`
 
 | Flag            | Default            | Description                 |
 | --------------- | ------------------ | --------------------------- |
-| `--model`       | `qwen2.5:7b`       | Ollama model name           |
+| `--model`       | `qwen3.5:9b`       | Ollama model name           |
 | `--mcp-command` | `uv run folio-mcp` | Command to spawn MCP server |
 | `--system`      | built-in           | Override system prompt      |
 
@@ -111,7 +111,7 @@ user input
 
 ## Recommended Model
 
-**Default:** `qwen2.5:7b` — most reliable tool calling, ~6GB VRAM, fits RTX 4070 laptop (8GB).
+**Default:** `qwen3.5:9b` — most reliable tool calling, ~6GB VRAM, fits RTX 4070 laptop (8GB).
 **Alternative:** `llama3.1:8b` — faster inference, slightly less stable tool calling.
 
 ## File Location

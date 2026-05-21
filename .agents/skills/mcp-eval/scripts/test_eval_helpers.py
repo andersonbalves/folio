@@ -17,6 +17,7 @@ _spec.loader.exec_module(_mod)  # type: ignore[union-attr]
 load_scenario = _mod.load_scenario
 check_trigger_assertions = _mod.check_trigger_assertions
 parse_stream_json = _mod.parse_stream_json
+parse_agy_log = _mod.parse_agy_log
 _normalize_tool_name = _mod._normalize_tool_name
 _build_mcp_config = _mod._build_mcp_config
 Scenario = _mod.Scenario
@@ -262,6 +263,55 @@ class TestParseStreamJson:
         tool_calls, answer = parse_stream_json("\n".join(lines))
         assert tool_calls == []
         assert answer == "done"
+
+
+class TestParseAgyLog:
+    def test_empty_log_returns_no_tools(self):
+        assert parse_agy_log("") == []
+
+    def test_mcp_tool_extracted(self):
+        log = (
+            "I0521 18:55:49.670 79376 tool_confirmation_manager.go:77] "
+            'Surfacing tool confirmation: "list_topics" at step 3\n'
+        )
+        tools = parse_agy_log(log)
+        assert len(tools) == 1
+        assert tools[0].tool == "list_topics"
+
+    def test_builtin_tools_skipped(self):
+        log = (
+            "I0521 18:55:49.670 79376 tool_confirmation_manager.go:77] "
+            'Surfacing tool confirmation: "Bash" at step 2\n'
+            "I0521 18:55:50.001 79376 tool_confirmation_manager.go:77] "
+            'Surfacing tool confirmation: "ReadFile" at step 4\n'
+            "I0521 18:55:51.000 79376 tool_confirmation_manager.go:77] "
+            'Surfacing tool confirmation: "list_topics" at step 6\n'
+        )
+        tools = parse_agy_log(log)
+        assert len(tools) == 1
+        assert tools[0].tool == "list_topics"
+
+    def test_multiple_mcp_tools(self):
+        log = (
+            "I0521 18:55:49.670 79376 tool_confirmation_manager.go:77] "
+            'Surfacing tool confirmation: "search_docs" at step 3\n'
+            "I0521 18:55:50.001 79376 tool_confirmation_manager.go:77] "
+            'Surfacing tool confirmation: "get_document" at step 5\n'
+        )
+        tools = parse_agy_log(log)
+        assert len(tools) == 2
+        assert tools[0].tool == "search_docs"
+        assert tools[1].tool == "get_document"
+
+    def test_lines_without_confirmation_ignored(self):
+        log = (
+            "I0521 18:55:48.000 79376 server.go:100] Starting server\n"
+            "E0521 18:55:49.000 79376 discovery.go:335] Failed to load config\n"
+            "I0521 18:55:49.670 79376 tool_confirmation_manager.go:77] "
+            'Surfacing tool confirmation: "list_topics" at step 3\n'
+        )
+        tools = parse_agy_log(log)
+        assert len(tools) == 1
 
 
 class TestBuildMcpConfig:

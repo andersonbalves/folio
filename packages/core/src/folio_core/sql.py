@@ -1,6 +1,6 @@
 """PEP 750 template processing for PostgreSQL parameterized queries."""
 
-from typing import Any, Protocol, runtime_checkable
+from typing import Any, LiteralString, Protocol, cast, runtime_checkable
 
 
 @runtime_checkable
@@ -21,7 +21,7 @@ class Template(Protocol):
     interpolations: tuple[Interpolation, ...]
 
 
-def postgres_sql(template: Any) -> tuple[str, tuple[Any, ...]]:
+def postgres_sql(template: Any) -> tuple[LiteralString, tuple[Any, ...]]:
     """Processes a PEP 750 Template object for PostgreSQL.
 
     Returns a (query_string, parameters) tuple.
@@ -38,4 +38,4 @@ def postgres_sql(template: Any) -> tuple[str, tuple[Any, ...]]:
             query_parts.append("%s")
             params.append(template.interpolations[i].value)
 
-    return "".join(query_parts), tuple(params)
+    return cast(LiteralString, "".join(query_parts)), tuple(params)
