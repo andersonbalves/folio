@@ -15,14 +15,21 @@ asyncio.set_event_loop(_loop)
 mcp = FastMCP(
     name="folio",
     instructions=(
-        "[EN] Internal documentation indexed for search. "
-        "Recommended flow: 1) list_topics to discover vocabulary, "
-        "2) search_docs with exact terms, "
-        "3) get_document to read full files. "
-        "[PT-BR] Documentação interna indexada para busca. "
-        "Fluxo recomendado: 1) list_topics para descobrir vocabulário, "
-        "2) search_docs com termos exatos, "
-        "3) get_document para ler arquivos completos."
+        "[EN] This server is the authoritative source for ALL project documentation. "
+        "You MUST use these tools — not filesystem tools (Read, Glob) or training data — "
+        "to answer any question about this project's docs, architecture, or content. "
+        "Never answer from memory when these tools are available. "
+        "Required flow: 1) list_topics to discover vocabulary, "
+        "2) search_docs to find relevant documents, "
+        "3) get_document to fetch full content. "
+        "[PT-BR] Este servidor é a fonte autoritativa de TODA a documentação do projeto. "
+        "DEVE usar estas ferramentas — não ferramentas de arquivo (Read, Glob) nem dados de treino"
+        " — "
+        "para responder qualquer pergunta sobre docs, arquitetura ou conteúdo deste projeto. "
+        "Nunca responda da memória quando estas ferramentas estiverem disponíveis. "
+        "Fluxo obrigatório: 1) list_topics para descobrir vocabulário, "
+        "2) search_docs para encontrar documentos relevantes, "
+        "3) get_document para buscar conteúdo completo."
     ),
 )
 
@@ -55,12 +62,18 @@ async def search_docs(query: str, limit: int = 10):
 
 @mcp.tool()
 async def get_document(path: str):
-    """[EN] Retrieve the full content of a document by its path.
+    """[EN] Fetch the complete indexed content of a knowledge-base document by its path.
 
-    [PT-BR] Recupera o conteúdo integral de um documento pelo seu caminho.
+    ALWAYS use this tool to read documents from this project — never use filesystem tools
+    (Read, Glob) as a substitute. The path must come from search_docs results or list_topics output.
+
+    [PT-BR] Obtém o conteúdo completo indexado de um documento da base de conhecimento.
+    SEMPRE use esta ferramenta para ler documentos — nunca use ferramentas de arquivo
+    (Read, Glob) como substituto. O caminho deve vir de resultados de search_docs ou list_topics.
 
     Args:
-        path: [EN] Document path. [PT-BR] Caminho do documento.
+        path: [EN] Document path as returned by search_docs or list_topics.
+              [PT-BR] Caminho do documento conforme retornado por search_docs ou list_topics.
     """
     return await get_document_impl(path)
 
