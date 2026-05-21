@@ -1,5 +1,7 @@
 """Tool: search_docs. BM25 via Postgres FTS."""
 
+from typing import LiteralString, cast
+
 from folio_core.models import SearchDocsResult, SearchMatch
 from folio_mcp.config import settings
 from folio_mcp.db import conn
@@ -35,7 +37,7 @@ async def search_docs(query: str, limit: int = 10) -> SearchDocsResult:
     """
 
     async with conn() as c, c.cursor() as cur:
-        await cur.execute(sql, (query, limit))
+        await cur.execute(cast(LiteralString, sql), (query, limit))
         rows = await cur.fetchall()
 
     matches = [SearchMatch(path=r[0], title=r[1], rank=float(r[2]), snippet=r[3]) for r in rows]

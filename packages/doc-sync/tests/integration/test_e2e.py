@@ -20,7 +20,9 @@ async def test_full_sync_indexes_s3_docs():
 
     async with conn() as c, c.cursor() as cur:
         await cur.execute("SELECT COUNT(*) FROM documents")
-        (count,) = await cur.fetchone()
+        row = await cur.fetchone()
+        assert row is not None
+        count = row[0]
 
     await close_pool()
     assert count == stats["scanned"] - stats["skipped"] + stats["indexed"]

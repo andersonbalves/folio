@@ -19,11 +19,29 @@ Quality validation loop for `folio-mcp` tools. Tests trigger quality (does Claud
 **Prerequisite:** folio infrastructure running. Verify with `docker-compose ps` — both `postgres` and `localstack` containers must show `Up`. Start with `make up` or `docker-compose up -d` if not running.
 
 ```bash
+# Auto-detects CLI (claude preferred, falls back to agy)
 uv run .agents/skills/mcp-eval/scripts/eval_mcp.py \
   --scenarios .agents/skills/mcp-eval/scenarios/ \
   --mcp-command "uv run folio-mcp" \
   --output /tmp/mcp-eval-results.json
+
+# Force specific CLI
+uv run .agents/skills/mcp-eval/scripts/eval_mcp.py \
+  --cli agy \
+  --scenarios .agents/skills/mcp-eval/scenarios/ \
+  --mcp-command "uv run folio-mcp" \
+  --output /tmp/mcp-eval-results.json
 ```
+
+**CLI differences:**
+
+| | `claude` | `agy` |
+|---|---|---|
+| Trigger detection | Full (stream-json) | Best-effort (log parsing) |
+| MCP config | `--mcp-config` flag | Writes to `~/.gemini/config/mcp_config.json` (restored after) |
+| Model | `claude-haiku-4-5-20251001` | IDE-configured model |
+
+**agy trigger detection caveat:** tool calls are detected from `agy --log-file` entries. If `--dangerously-skip-permissions` bypasses the confirmation step in your version of `agy`, trigger detection will be unavailable and scenarios will show `[ANSWER-ONLY]` status. Evaluate final answer quality manually in that case.
 
 ## Evaluating Quality Criteria
 

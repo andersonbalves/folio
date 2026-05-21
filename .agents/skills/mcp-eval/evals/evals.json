@@ -1,0 +1,42 @@
+{
+  "skill_name": "mcp-eval",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Run the MCP eval against folio-mcp and give me a full report on which scenarios are passing and failing. Include the tool call traces and evaluate the quality criteria for each scenario.",
+      "expected_output": "Runs eval_mcp.py, shows PASS/FAIL per scenario with tool traces, evaluates quality criteria, provides fix recommendations pointing to handler.py",
+      "files": [],
+      "expectations": [
+        "eval_mcp.py script was executed via Bash command",
+        "Report shows PASS or FAIL status for all 5 scenarios",
+        "Tool call traces are shown (which tools were called per scenario)",
+        "Quality criteria are evaluated for at least one scenario",
+        "At least one recommended fix references handler.py"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Before modifying handler.py to fix a trigger quality issue with get_document, run the MCP eval to establish the current baseline. Focus on which scenarios involve get_document and whether it's being triggered correctly.",
+      "expected_output": "Runs eval_mcp.py, identifies get_document trigger failures specifically, documents baseline state, explains what's wrong",
+      "files": [],
+      "expectations": [
+        "eval_mcp.py script was executed via Bash command",
+        "Report specifically addresses scenario 003 (get document by path)",
+        "get_document tool trigger status is documented (pass or fail)",
+        "Root cause for get_document trigger failure is identified"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Claude keeps bypassing the folio MCP tools and using its own filesystem tools (Read, Glob) when asked about project documentation. Run the eval to diagnose where the trigger failures are, identify the root cause, and tell me exactly what to change in handler.py to fix it.",
+      "expected_output": "Runs eval_mcp.py, identifies scenarios where filesystem tools replace MCP tools, gives specific fix recommendations pointing to handler.py docstrings or FastMCP instructions",
+      "files": [],
+      "expectations": [
+        "eval_mcp.py script was executed via Bash command",
+        "Report identifies specific scenarios where non-MCP tools were called instead",
+        "Root cause analysis mentions tool descriptions or server instructions in handler.py",
+        "At least one concrete fix is recommended with specific location in handler.py"
+      ]
+    }
+  ]
+}

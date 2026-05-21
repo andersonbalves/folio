@@ -9,7 +9,6 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
-import readline  # noqa: F401 — enables readline history for input()
 import shlex
 import sys
 from pathlib import Path
@@ -99,7 +98,7 @@ class MCPBridge:
             return f"[tool error: {exc}]"
 
 
-DEFAULT_MODEL = "qwen2.5:7b"
+DEFAULT_MODEL = "qwen3.5:9b"
 DEFAULT_MCP_COMMAND = "uv run folio-mcp"
 DEFAULT_SYSTEM = (
     "You are a helpful assistant. Use the available tools when they would help answer the question."
@@ -198,7 +197,7 @@ async def repl(agent: OllamaAgent, tools: list[mcp.types.Tool]) -> None:
 def parse_args() -> argparse.Namespace:
     """Parse CLI arguments."""
     parser = argparse.ArgumentParser(description="Chat with folio docs via Ollama + MCP")
-    parser.add_argument("--model", default=DEFAULT_MODEL, help="Ollama model (default: qwen2.5:7b)")
+    parser.add_argument("--model", default=DEFAULT_MODEL, help="Ollama model (default: qwen3.5:9b)")
     parser.add_argument(
         "--mcp-command", default=DEFAULT_MCP_COMMAND, help="Command to spawn MCP server"
     )

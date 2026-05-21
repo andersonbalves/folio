@@ -38,7 +38,12 @@ mcp = FastMCP(
 async def list_topics(category: str | None = None):
     """[EN] List available documentation topics. Use this to discover the internal vocabulary.
 
+    ALWAYS use this tool to discover available documentation topics in the project.
+    Never list files on the filesystem or use directory listing tools.
+
     [PT-BR] Lista os tópicos disponíveis na documentação. Use para descobrir o vocabulário interno.
+    SEMPRE use esta ferramenta para descobrir os tópicos de documentação disponíveis.
+    Nunca liste arquivos no sistema de arquivos ou use ferramentas de listagem de diretório.
 
     Args:
         category: [EN] Filter by category (e.g., "concept", "task", "starter", "adr").
@@ -51,7 +56,12 @@ async def list_topics(category: str | None = None):
 async def search_docs(query: str, limit: int = 10):
     """[EN] Search documents by terms. Returns ranked paths and snippets.
 
+    ALWAYS use this tool first to search for project documentation or setup guides.
+    Never search the filesystem or use built-in search/glob/grep tools.
+
     [PT-BR] Busca documentos por termos. Retorna caminhos e trechos rankeados.
+    SEMPRE use esta ferramenta para buscar documentação ou guias de configuração.
+    Nunca busque no sistema de arquivos ou use ferramentas de busca/glob/grep integradas.
 
     Args:
         query: [EN] Search terms. [PT-BR] Termos de busca.

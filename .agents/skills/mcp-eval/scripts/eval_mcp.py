@@ -2,14 +2,18 @@
 # requires-python = ">=3.14"
 # dependencies = ["pyyaml>=6.0"]
 # ///
-"""MCP eval runner — tests folio-mcp trigger and response quality via claude -p CLI."""
+"""MCP eval runner — tests folio-mcp trigger and response quality via AI CLI."""
 
 from __future__ import annotations
 
 import argparse
 import json
+import os
+import re
 import subprocess
 import tempfile
+from collections.abc import Generator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -57,6 +61,7 @@ class TriggerResult:
     passed: bool
     missing: list[str]
     unexpected: list[str]
+    trigger_data_available: bool = True
 
 
 @dataclass
@@ -94,6 +99,7 @@ def load_scenario(path: Path) -> Scenario:
 def check_trigger_assertions(
     tool_calls: list[ToolCall],
     expected_tools: list[ExpectedTool],
+    trigger_data_available: bool = True,
 ) -> TriggerResult:
     """Check deterministic trigger assertions for a scenario result."""
     called_names = {tc.tool for tc in tool_calls}
@@ -109,11 +115,12 @@ def check_trigger_assertions(
         passed=len(missing) == 0,
         missing=missing,
         unexpected=unexpected,
+        trigger_data_available=trigger_data_available,
     )
 
 
 def _build_mcp_config(mcp_command: str, project_root: Path) -> dict:
-    """Build MCP config dict for --mcp-config flag."""
+    """Build MCP config dict for --mcp-config flag (claude) or mcp_config.json (agy)."""
     parts = mcp_command.split()
     return {
         "mcpServers": {
@@ -127,11 +134,10 @@ def _build_mcp_config(mcp_command: str, project_root: Path) -> dict:
 
 
 def _normalize_tool_name(name: str) -> str:
-    """Strip mcp__<server>__ prefix added by Claude Code for MCP tools.
+    """Strip CLI-specific MCP tool name prefixes.
 
-    Claude Code prefixes MCP tools as mcp__<servername>__<toolname>.
-    Scenarios use short names (e.g. list_topics), so we strip the prefix
-    to allow matching. Non-MCP tools (Read, Bash, etc.) pass through unchanged.
+    Claude Code: mcp__folio__list_topics -> list_topics
+    agy (speculative dot notation): folio.list_topics -> list_topics
     """
     if name.startswith("mcp__"):
         parts = name.split("__", 2)
@@ -185,14 +191,87 @@ def parse_stream_json(output: str) -> tuple[list[ToolCall], str]:
     return tool_calls, final_answer
 
 
+# Pattern for agy log entries surfacing tool confirmations:
+# I0521 18:55:49.670 79376 tool_confirmation_manager.go:77]
+# Surfacing tool confirmation: "Bash" at step 34
+_AGY_TOOL_CONFIRMATION_RE = re.compile(r'Surfacing tool confirmation: "([^"]+)" at step')
+
+# agy's global MCP config path
+_AGY_MCP_CONFIG_PATH = Path.home() / ".gemini" / "config" / "mcp_config.json"
+
+
+def parse_agy_log(log_content: str) -> list[ToolCall]:
+    """Parse agy --log-file output for MCP tool calls.
+
+    Extracts tool names from tool_confirmation_manager log entries.
+    Returns only MCP tool calls (skips built-in tools like Bash, ReadFile, Edit).
+    NOTE: --dangerously-skip-permissions may bypass the confirmation step,
+    in which case this returns an empty list (trigger detection unavailable).
+    """
+    known_builtin = {"Bash", "ReadFile", "Edit", "WriteFile", "Search", "Grep"}
+    tool_calls = []
+    for line in log_content.splitlines():
+        m = _AGY_TOOL_CONFIRMATION_RE.search(line)
+        if m:
+            raw_name = m.group(1)
+            if raw_name not in known_builtin:
+                tool_calls.append(
+                    ToolCall(
+                        tool=_normalize_tool_name(raw_name),
+                        args={},
+                        result_len=0,
+                    )
+                )
+    return tool_calls
+
+
+@contextmanager
+def _agy_mcp_config(mcp_command: str, project_root: Path) -> Generator[None]:
+    """Temporarily write folio MCP config to agy's global config, restoring after."""
+    config = _build_mcp_config(mcp_command, project_root)
+    original = _AGY_MCP_CONFIG_PATH.read_bytes() if _AGY_MCP_CONFIG_PATH.exists() else None
+    _AGY_MCP_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    _AGY_MCP_CONFIG_PATH.write_text(json.dumps(config, indent=2))
+    try:
+        yield
+    finally:
+        if original is None:
+            _AGY_MCP_CONFIG_PATH.unlink(missing_ok=True)
+        else:
+            _AGY_MCP_CONFIG_PATH.write_bytes(original)
+
+
 # ---------------------------------------------------------------------------
-# Scenario runner
+# CLI detection
+# ---------------------------------------------------------------------------
+
+_CLAUDE_CLI = "claude"
+_AGY_CLI = "agy"
+
+
+def detect_cli() -> str:
+    """Auto-detect which AI CLI to use.
+
+    Checks ANTIGRAVITY_CLI_ID env var (set by Antigravity IDE) first,
+    then falls back to PATH lookup preferring claude over agy.
+    """
+    if os.environ.get("ANTIGRAVITY_CLI_ID") or os.environ.get("ANTIGRAVITY_PROJECT_ID"):
+        return _AGY_CLI
+    for cli in (_CLAUDE_CLI, _AGY_CLI):
+        result = subprocess.run(["which", cli], capture_output=True, text=True)
+        if result.returncode == 0:
+            return cli
+    return _CLAUDE_CLI
+
+
+# ---------------------------------------------------------------------------
+# Scenario runners
 # ---------------------------------------------------------------------------
 
 MODEL = "claude-haiku-4-5-20251001"
 
 
-def run_scenario(scenario: Scenario, mcp_command: str, project_root: Path) -> ScenarioResult:
+def run_scenario_claude(scenario: Scenario, mcp_command: str, project_root: Path) -> ScenarioResult:
     """Run a single scenario via claude -p CLI against live folio-mcp."""
     config = _build_mcp_config(mcp_command, project_root)
 
@@ -238,15 +317,87 @@ def run_scenario(scenario: Scenario, mcp_command: str, project_root: Path) -> Sc
     )
 
 
+def run_scenario_agy(scenario: Scenario, mcp_command: str, project_root: Path) -> ScenarioResult:
+    """Run a single scenario via agy -p CLI against live folio-mcp.
+
+    Tool detection is best-effort: agy logs tool confirmation events to --log-file.
+    If --dangerously-skip-permissions bypasses the confirmation manager, tool_calls
+    will be empty and trigger_data_available will be False (answer-only eval).
+    """
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".log", delete=False) as f:
+        log_path = Path(f.name)
+
+    try:
+        with _agy_mcp_config(mcp_command, project_root):
+            proc = subprocess.run(
+                [
+                    "agy",
+                    "-p",
+                    scenario.question,
+                    "--dangerously-skip-permissions",
+                    "--log-file",
+                    str(log_path),
+                ],
+                capture_output=True,
+                text=True,
+                timeout=120,
+            )
+        if proc.returncode != 0:
+            print(f"  Warning: agy exited with code {proc.returncode}")
+            if proc.stderr:
+                print(f"  stderr: {proc.stderr[:200]}")
+
+        final_answer = proc.stdout.strip()
+        log_content = log_path.read_text() if log_path.exists() else ""
+        tool_calls = parse_agy_log(log_content)
+    finally:
+        log_path.unlink(missing_ok=True)
+
+    trigger_data_available = len(tool_calls) > 0
+    if not trigger_data_available:
+        print("  Warning: no MCP tool calls found in agy log — trigger detection unavailable")
+
+    trigger = check_trigger_assertions(tool_calls, scenario.expected_tools, trigger_data_available)
+    return ScenarioResult(
+        id=scenario.id,
+        name=scenario.name,
+        question=scenario.question,
+        tool_calls=tool_calls,
+        final_answer=final_answer,
+        trigger=trigger,
+    )
+
+
+def run_scenario(
+    scenario: Scenario, mcp_command: str, project_root: Path, cli: str
+) -> ScenarioResult:
+    """Dispatch to the correct CLI runner."""
+    if cli == _AGY_CLI:
+        return run_scenario_agy(scenario, mcp_command, project_root)
+    return run_scenario_claude(scenario, mcp_command, project_root)
+
+
 def format_report(results: list[ScenarioResult]) -> str:
     """Format eval results as a markdown report."""
-    passed = sum(1 for r in results if r.trigger.passed)
-    lines = [
-        "# MCP Eval Report",
-        f"\n**Trigger: {passed}/{len(results)} passed**\n",
-    ]
+    evaluable = [r for r in results if r.trigger.trigger_data_available]
+    passed = sum(1 for r in evaluable if r.trigger.passed)
+    no_data = len(results) - len(evaluable)
+
+    lines = ["# MCP Eval Report"]
+    if no_data:
+        msg = (
+            f"\n**Trigger: {passed}/{len(evaluable)} passed** "
+            f"({no_data} answer-only — no trigger data)\n"
+        )
+        lines.append(msg)
+    else:
+        lines.append(f"\n**Trigger: {passed}/{len(results)} passed**\n")
+
     for r in results:
-        status = "PASS" if r.trigger.passed else "FAIL"
+        if not r.trigger.trigger_data_available:
+            status = "ANSWER-ONLY"
+        else:
+            status = "PASS" if r.trigger.passed else "FAIL"
         lines += [
             f"\n## [{status}] {r.id} — {r.name}",
             f"**Question:** {r.question}",
@@ -256,6 +407,8 @@ def format_report(results: list[ScenarioResult]) -> str:
             lines.append(f"**Missing required:** {r.trigger.missing}")
         if r.trigger.unexpected:
             lines.append(f"**Unexpected (warning):** {r.trigger.unexpected}")
+        if not r.trigger.trigger_data_available:
+            lines.append("**Note:** agy trigger detection unavailable — evaluate final answer only")
         lines.append(f"\n**Final answer (first 500 chars):**\n{r.final_answer[:500]}")
     return "\n".join(lines)
 
@@ -284,7 +437,16 @@ def main() -> None:
         "--output",
         help="Write JSON results to this path (optional)",
     )
+    parser.add_argument(
+        "--cli",
+        choices=["claude", "agy", "auto"],
+        default="auto",
+        help="AI CLI to use: claude, agy, or auto-detect (default: auto)",
+    )
     args = parser.parse_args()
+
+    cli = detect_cli() if args.cli == "auto" else args.cli
+    print(f"Using CLI: {cli}")
 
     scenarios_dir = Path(args.scenarios)
     scenario_files = sorted(scenarios_dir.glob("*.yaml"))
@@ -300,10 +462,13 @@ def main() -> None:
     results: list[ScenarioResult] = []
     for scenario in scenarios:
         print(f"Running {scenario.id}: {scenario.name}...")
-        result = run_scenario(scenario, args.mcp_command, project_root)
+        result = run_scenario(scenario, args.mcp_command, project_root, cli)
         results.append(result)
-        status = "PASS" if result.trigger.passed else "FAIL"
-        print(f"  Trigger: {status}  tools={[tc.tool for tc in result.tool_calls]}")
+        if not result.trigger.trigger_data_available:
+            print(f"  Trigger: ANSWER-ONLY  answer_len={len(result.final_answer)}")
+        else:
+            status = "PASS" if result.trigger.passed else "FAIL"
+            print(f"  Trigger: {status}  tools={[tc.tool for tc in result.tool_calls]}")
 
     print("\n" + format_report(results))
 
@@ -324,6 +489,7 @@ def main() -> None:
                     "passed": r.trigger.passed,
                     "missing": r.trigger.missing,
                     "unexpected": r.trigger.unexpected,
+                    "trigger_data_available": r.trigger.trigger_data_available,
                 },
             }
             for r in results

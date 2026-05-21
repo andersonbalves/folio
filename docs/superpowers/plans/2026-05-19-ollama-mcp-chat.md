@@ -49,7 +49,7 @@ from fastmcp.client.client import CallToolResult
 
 _PROJECT_ROOT = Path(__file__).parent.parent
 
-DEFAULT_MODEL = "qwen2.5:7b"
+DEFAULT_MODEL = "qwen3.5:9b"
 DEFAULT_MCP_COMMAND = "uv run folio-mcp"
 DEFAULT_SYSTEM = (
     "You are a helpful assistant with access to the Folio internal knowledge base. "
@@ -61,7 +61,7 @@ DEFAULT_SYSTEM = (
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Chat with folio docs via Ollama + MCP")
-    parser.add_argument("--model", default=DEFAULT_MODEL, help="Ollama model (default: qwen2.5:7b)")
+    parser.add_argument("--model", default=DEFAULT_MODEL, help="Ollama model (default: qwen3.5:9b)")
     parser.add_argument("--mcp-command", default=DEFAULT_MCP_COMMAND, help="Command to spawn MCP server")
     parser.add_argument("--system", default=DEFAULT_SYSTEM, help="System prompt override")
     return parser.parse_args()
@@ -488,14 +488,14 @@ Expected: help text with no import errors.
 
 - [ ] **Step 3: Smoke test — Ollama running, folio-mcp reachable**
 
-Prerequisites: `ollama serve` running, `ollama pull qwen2.5:7b` completed.
+Prerequisites: `ollama serve` running, `ollama pull qwen3.5:9b` completed.
 
 Run: `uv run scripts/chat.py`
 
 Expected:
 
 ```
-Model: qwen2.5:7b
+Model: qwen3.5:9b
 Connecting to folio-mcp… connected.
 
 Tools: list_topics, search_docs, get_document
@@ -537,7 +537,7 @@ git commit -m "feat(scripts): ollama mcp chat REPL complete"
 
 - ✅ Conversational REPL with message history — `OllamaAgent._messages`
 - ✅ MCP client via stdio — `Client(mcp_config)` with MCPConfig dict
-- ✅ Ollama model default `qwen2.5:7b` — `DEFAULT_MODEL`
+- ✅ Ollama model default `qwen3.5:9b` — `DEFAULT_MODEL`
 - ✅ PEP 723 inline deps — header in Task 1
 - ✅ `--model`, `--mcp-command`, `--system` args — `parse_args()`
 - ✅ Tool calls printed inline — `[tool: name(args)]` in `OllamaAgent.run()`
