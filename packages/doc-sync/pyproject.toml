@@ -11,7 +11,7 @@ dependencies = [
 ]
 
 [project.scripts]
-folio-sync = "folio_sync.handler:main"
+folio-sync = "folio_sync.shell.handler:main"
 
 [tool.uv.sources]
 folio-core = { workspace = true }
