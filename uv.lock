@@ -881,7 +881,6 @@ version = "0.1.0"
 source = { editable = "packages/core" }
 dependencies = [
     { name = "pydantic" },
-    { name = "pyyaml" },
 ]
 
 [package.dev-dependencies]
@@ -891,10 +890,7 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [
-    { name = "pydantic", specifier = ">=2.13.4" },
-    { name = "pyyaml", specifier = ">=6.0.3" },
-]
+requires-dist = [{ name = "pydantic", specifier = ">=2.13.4" }]
 
 [package.metadata.requires-dev]
 dev = [
@@ -932,6 +928,7 @@ dependencies = [
     { name = "dynaconf" },
     { name = "folio-core" },
     { name = "psycopg", extra = ["binary", "pool"] },
+    { name = "pyyaml" },
     { name = "structlog" },
 ]
 
@@ -941,6 +938,7 @@ requires-dist = [
     { name = "dynaconf", specifier = ">=3.2.13" },
     { name = "folio-core", editable = "packages/core" },
     { name = "psycopg", extras = ["binary", "pool"], specifier = ">=3.3.4" },
+    { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "structlog", specifier = ">=25.5.0" },
 ]
 
