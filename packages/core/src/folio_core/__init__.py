@@ -1,4 +1,4 @@
-"""Core library: data models, parsing, hashing, and SQL templating utilities."""
+"""Shared domain types and SQL helpers for the folio workspace."""
 
 __version__ = "0.1.0"
 
