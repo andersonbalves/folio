@@ -1,6 +1,16 @@
 ---
 name: mcp-eval
-description: Use to validate folio-mcp tool quality — tests whether Claude correctly triggers the right MCP tools and produces accurate responses. Run before/after modifying tool descriptions, server instructions, or tool implementations in handler.py. Invoke when you want to evaluate MCP trigger quality, check if tool descriptions are clear, validate a change to FastMCP instructions, or run the RED-GREEN-REFACTOR loop for MCP quality improvement.
+description: >
+  Use para validar a qualidade das ferramentas do folio-mcp — testa se Claude aciona as
+  ferramentas MCP corretas e produz respostas precisas. Execute antes/depois de modificar
+  descrições de ferramentas, instruções do servidor ou implementações em handler.py.
+  Invoque ao avaliar qualidade de triggers MCP, verificar clareza de descrições,
+  validar mudanças nas instruções do FastMCP, ou executar o loop RED-GREEN-REFACTOR. /
+  Use to validate folio-mcp tool quality — tests whether Claude correctly triggers the right
+  MCP tools and produces accurate responses. Run before/after modifying tool descriptions,
+  server instructions, or tool implementations in handler.py. Invoke when you want to evaluate
+  MCP trigger quality, check if tool descriptions are clear, validate a change to FastMCP
+  instructions, or run the RED-GREEN-REFACTOR loop for MCP quality improvement.
 ---
 
 # MCP Eval
