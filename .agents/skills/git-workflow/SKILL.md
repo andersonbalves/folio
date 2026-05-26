@@ -1,6 +1,11 @@
 ---
 name: git-workflow
 description: >
+  Orquestra o fluxo Git disciplinado para features, correções e tarefas de manutenção.
+  Use sempre que iniciar uma nova tarefa (feature, fix, refactor, chore), quando múltiplos
+  agentes precisam trabalhar em paralelo no mesmo repo, ou ao finalizar e integrar via PR.
+  Aplique mesmo que o usuário diga apenas "comece a trabalhar em X", "corrija Y",
+  "crie uma branch para Z" ou "terminei, abra um PR" — esta skill cobre o ciclo completo. /
   Orchestrates disciplined Git workflow for all feature work, bug fixes, and maintenance tasks.
   Trigger whenever work is starting on a new task (feature, fix, refactor, chore), whenever
   multiple agents need to work in parallel in the same repo, or whenever a task is finishing

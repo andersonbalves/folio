@@ -1,6 +1,15 @@
 ---
 name: python-dependency-management
-description: Use when adding, updating, or managing Python dependencies with uv, or when working with UV workspaces (monorepos), local package dependencies, or refactoring projects to workspace structures.
+description: >
+  Use ao adicionar, atualizar ou gerenciar dependências Python com uv, ao trabalhar com
+  workspaces UV (monorepos), dependências locais entre pacotes, ou ao refatorar projetos
+  para estrutura de workspace. Aplique sempre que o usuário mencionar uv, pyproject.toml,
+  uv add, uv sync, workspace, ou tiver dúvidas sobre onde adicionar uma dependência
+  num monorepo Python. /
+  Use when adding, updating, or managing Python dependencies with uv, or when working with
+  UV workspaces (monorepos), local package dependencies, or refactoring projects to workspace
+  structures. Apply whenever the user mentions uv, pyproject.toml, uv add, uv sync, workspace,
+  or has questions about where to add a dependency in a Python monorepo.
 ---
 
 # Python Dependency Management with uv
