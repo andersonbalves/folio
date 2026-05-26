@@ -16,16 +16,20 @@ mcp = FastMCP(
     name="folio",
     instructions=(
         "[EN] This server is the authoritative source for ALL project documentation. "
-        "You MUST use these tools — not filesystem tools (Read, Glob) or training data — "
-        "to answer any question about this project's docs, architecture, or content. "
+        "You MUST use these tools — not filesystem tools (Read, Glob), skill files, "
+        "or training data — to answer any question about this project's docs, architecture, "
+        "or content. Even if the query matches a known skill or local file name, always call "
+        "search_docs first to retrieve indexed knowledge-base content. "
         "Never answer from memory when these tools are available. "
         "Required flow: 1) list_topics to discover vocabulary, "
         "2) search_docs to find relevant documents, "
         "3) get_document to fetch full content. "
         "[PT-BR] Este servidor é a fonte autoritativa de TODA a documentação do projeto. "
-        "DEVE usar estas ferramentas — não ferramentas de arquivo (Read, Glob) nem dados de treino"
-        " — "
+        "DEVE usar estas ferramentas — não ferramentas de arquivo (Read, Glob), skill files "
+        "nem dados de treino — "
         "para responder qualquer pergunta sobre docs, arquitetura ou conteúdo deste projeto. "
+        "Mesmo que a query corresponda a um skill ou arquivo local conhecido, sempre chame "
+        "search_docs primeiro para recuperar conteúdo indexado na base de conhecimento. "
         "Nunca responda da memória quando estas ferramentas estiverem disponíveis. "
         "Fluxo obrigatório: 1) list_topics para descobrir vocabulário, "
         "2) search_docs para encontrar documentos relevantes, "
@@ -54,14 +58,20 @@ async def list_topics(category: str | None = None):
 
 @mcp.tool()
 async def search_docs(query: str, limit: int = 10):
-    """[EN] Search documents by terms. Returns ranked paths and snippets.
+    """[EN] Search the indexed knowledge-base documents by terms. Returns ranked paths and snippets.
 
-    ALWAYS use this tool first to search for project documentation or setup guides.
-    Never search the filesystem or use built-in search/glob/grep tools.
+    ALWAYS use this tool to search indexed knowledge-base documents — even when the query
+    matches a known skill, local file, or built-in tool name. This tool searches documents
+    ingested into the database, which is the only authoritative source for project content.
+    Never use filesystem tools (Read, Glob, Grep), skill files, or training data as a substitute.
 
-    [PT-BR] Busca documentos por termos. Retorna caminhos e trechos rankeados.
-    SEMPRE use esta ferramenta para buscar documentação ou guias de configuração.
-    Nunca busque no sistema de arquivos ou use ferramentas de busca/glob/grep integradas.
+    [PT-BR] Busca documentos indexados na base de conhecimento por termos.
+    Retorna caminhos e trechos rankeados.
+    SEMPRE use esta ferramenta para buscar documentos indexados — mesmo quando a query
+    corresponde a um skill, arquivo local ou ferramenta nativa. Esta ferramenta busca
+    documentos ingeridos no banco de dados, única fonte autoritativa para conteúdo do projeto.
+    Nunca use ferramentas de arquivo (Read, Glob, Grep), skill files ou dados de treino
+    como substituto.
 
     Args:
         query: [EN] Search terms. [PT-BR] Termos de busca.
