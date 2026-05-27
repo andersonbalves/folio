@@ -895,6 +895,7 @@ dependencies = [
     { name = "dynaconf" },
     { name = "fastmcp" },
     { name = "folio-core" },
+    { name = "folio-embeddings" },
     { name = "sqlite-vec" },
     { name = "structlog" },
 ]
@@ -904,6 +905,7 @@ requires-dist = [
     { name = "dynaconf", specifier = ">=3.2.13" },
     { name = "fastmcp", specifier = ">=3.3.1" },
     { name = "folio-core", editable = "packages/core" },
+    { name = "folio-embeddings", editable = "packages/embeddings" },
     { name = "sqlite-vec", specifier = ">=0.1.9" },
     { name = "structlog", specifier = ">=25.5.0" },
 ]

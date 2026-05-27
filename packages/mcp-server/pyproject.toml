@@ -6,6 +6,7 @@ dependencies = [
     "dynaconf>=3.2.13",
     "fastmcp>=3.3.1",
     "folio-core",
+    "folio-embeddings",
     "structlog>=25.5.0",
     "sqlite-vec>=0.1.9",
 ]
@@ -15,6 +16,7 @@ folio-mcp = "folio_mcp.shell.handler:main"
 
 [tool.uv.sources]
 folio-core = { workspace = true }
+folio-embeddings = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

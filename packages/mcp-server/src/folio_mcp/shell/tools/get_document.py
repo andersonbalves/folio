@@ -22,9 +22,12 @@ def get_document(path: str) -> GetDocumentResult | None:
     if row is None:
         return None
     import json
+
+    raw_meta = row["metadata"]
+    metadata = json.loads(raw_meta) if isinstance(raw_meta, str) else raw_meta
     return GetDocumentResult(
         path=row["path"],
         title=row["title"],
         content=row["content"],
-        metadata=json.loads(row["metadata"]) if isinstance(row["metadata"], str) else row["metadata"]
+        metadata=metadata,
     )
