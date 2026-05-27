@@ -8,7 +8,7 @@ from folio_mcp.shell.config import settings
 from folio_mcp.shell.db import conn
 
 
-async def search_docs(query: str, limit: int = 10) -> SearchDocsResult:
+def search_docs(query: str, limit: int = 10) -> SearchDocsResult:
     """Search documents by terms. Returns ranked paths and snippets.
 
     Use after list_topics to find specific content.
@@ -23,7 +23,8 @@ async def search_docs(query: str, limit: int = 10) -> SearchDocsResult:
         max_fragments=settings.search.snippet_max_fragments,
         max_words=settings.search.snippet_max_words,
     )
-    async with conn() as c, c.cursor() as cur:
-        await cur.execute(sql, (query, limit))
-        rows = await cur.fetchall()
-    return map_search_rows(rows, query)
+    with conn() as c:
+        cur = c.cursor()
+        cur.execute(sql, (query, limit))
+        rows = cur.fetchall()
+    return map_search_rows([dict(r) for r in rows], query)

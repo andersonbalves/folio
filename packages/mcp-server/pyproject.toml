@@ -6,8 +6,8 @@ dependencies = [
     "dynaconf>=3.2.13",
     "fastmcp>=3.3.1",
     "folio-core",
-    "psycopg[binary,pool]>=3.3.4",
     "structlog>=25.5.0",
+    "sqlite-vec>=0.1.9",
 ]
 
 [project.scripts]

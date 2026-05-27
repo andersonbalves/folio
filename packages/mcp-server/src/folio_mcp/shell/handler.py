@@ -33,7 +33,7 @@ mcp = FastMCP(
 
 
 @mcp.tool()
-async def list_topics(category: str | None = None):
+def list_topics(category: str | None = None):
     """[EN] List available documentation topics. Use this to discover the internal vocabulary.
 
     ALWAYS use this tool to discover available documentation topics in the project.
@@ -45,11 +45,11 @@ async def list_topics(category: str | None = None):
     Args:
         category: Filter by category (e.g., "concept", "task", "starter", "adr").
     """
-    return await list_topics_impl(category)
+    return list_topics_impl(category)
 
 
 @mcp.tool()
-async def search_docs(query: str, limit: int = 10):
+def search_docs(query: str, limit: int = 10):
     """[EN] Search the indexed knowledge-base documents by terms.
 
     ALWAYS use this tool to search — never use filesystem tools (Read, Glob, Grep).
@@ -60,11 +60,11 @@ async def search_docs(query: str, limit: int = 10):
         query: Search terms.
         limit: Max results (1-50).
     """
-    return await search_docs_impl(query, limit)
+    return search_docs_impl(query, limit)
 
 
 @mcp.tool()
-async def get_document(path: str):
+def get_document(path: str):
     """[EN] Fetch the complete indexed content of a knowledge-base document by its path.
 
     ALWAYS use this tool to read documents — never use filesystem tools (Read, Glob).
@@ -74,7 +74,7 @@ async def get_document(path: str):
     Args:
         path: Document path as returned by search_docs or list_topics.
     """
-    return await get_document_impl(path)
+    return get_document_impl(path)
 
 
 def main() -> None:

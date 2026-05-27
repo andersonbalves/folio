@@ -1,31 +1,30 @@
 # Folio
 
-Knowledge management system (RAG-ready): syncs Markdown documents from S3 to Postgres
-with full-text/vector search, exposing search tools via the Model Context Protocol (MCP).
+Knowledge management system (RAG-ready): indexes local Markdown documents into a SQLite database with full-text search (BM25 via FTS5), exposing search tools via the Model Context Protocol (MCP). The whole project is distributed as a standalone Docker image.
 
 ## Packages
 
 | Package | Path | Role |
 |---------|------|------|
 | `folio-core` | `packages/core/` | Shared domain types and SQL helpers. Pure Python, no I/O. Only `models.py` and `sql.py`. |
-| `folio-sync` | `packages/doc-sync/` | Event-driven S3→Postgres sync. Has own `core/` (parser, hasher, categorizer, indexer) and `shell/` (db, s3_client, indexer, handler). |
-| `folio-mcp` | `packages/mcp-server/` | MCP server exposing `list_topics`, `search_docs`, `get_document`. Has own `core/` (queries, mappers) and `shell/` (db, tools, handler). |
+| `folio-sync` | `packages/doc-sync/` | Local directory indexer. Has own `core/` (parser, hasher, categorizer, indexer) and `shell/` (db, cli). Reads from local `data/` and upserts to SQLite. |
+| `folio-mcp` | `packages/mcp-server/` | MCP server exposing `list_topics`, `search_docs`, `get_document`. Has own `core/` (queries, mappers) and `shell/` (db, tools, handler) running synchronous SQLite queries. |
 | `folio-chat` | `packages/chat/` | Chainlit web UI and CLI REPL for local testing. |
 
 ## Stack
 
 - Python 3.14+, `uv` workspace monorepo (`pyproject.toml` at root + per package)
-- Postgres with pgvector and BM25 full-text search
-- LocalStack for local AWS emulation (S3, SQS, SNS)
+- SQLite with `sqlite-vec` extension and FTS5 full-text search
+- Docker (multi-stage builds for the standalone image)
 - Chainlit for conversational web UI
 - MCP protocol (via `fastmcp`) for tool exposure to AI assistants
 
 ## Dev Workflow
 
 ```bash
-make bootstrap      # full setup: infra + migrations + seed + sync
-make up             # start Postgres + LocalStack, seed S3, sync to DB
-make down           # stop all containers and LocalStack
+make k8s-docs       # clone Kubernetes documentation into data/ for testing
+make index          # parse data/ and build folio.sqlite database
+make build-image    # build the standalone Docker image (folio-mcp)
 make check          # lint + typecheck + tests (run before committing)
 make test           # pytest only
 make lint           # ruff check
@@ -35,9 +34,6 @@ make serve-http     # run MCP server via SSE on :8001
 make chat           # CLI REPL (Ollama + MCP)
 make chat-web       # Chainlit web UI (requires make serve-http)
 ```
-
-Migrations: `infra/migrations/`. Apply with `make migrate`. Never alter schema directly.
-Seed data: `infra/seed/`. Infrastructure scripts: `infra/scripts/`.
 
 ## Architecture: FCIS Layers
 

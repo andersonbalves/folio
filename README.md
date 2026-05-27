@@ -1,38 +1,36 @@
 # Folio
 
-Folio é um sistema de gerenciamento de conhecimento (RAG-ready) que sincroniza documentos Markdown de um bucket S3 para um banco de dados Postgres com busca vetorial/textual, expondo as ferramentas via protocolo MCP (Model Context Protocol).
+Folio é um sistema de gerenciamento de conhecimento (RAG-ready) que indexa documentos Markdown locais para um banco de dados SQLite com busca textual (BM25 via FTS5), expondo as ferramentas de busca e recuperação de documentos via protocolo MCP (Model Context Protocol). O projeto é distribuído como uma imagem Docker multi-stage completamente standalone.
 
 ## Arquitetura
 
 - **`folio-core`** (`packages/core/`): Tipos de domínio compartilhados e helper SQL. Apenas `models.py` e `sql.py`.
-- **`folio-sync`** (`packages/doc-sync/`): Sincronização S3 → Postgres. Possui `core/` próprio (parser, hasher, categorizer, indexer) e `shell/` (db, s3_client, indexer, handler).
-- **`folio-mcp`** (`packages/mcp-server/`): Servidor MCP que expõe `list_topics`, `search_docs`, `get_document`. Possui `core/` (queries, mappers) e `shell/` (db, tools, handler).
+- **`folio-sync`** (`packages/doc-sync/`): Indexador local. Possui `core/` próprio (parser, hasher, categorizer, indexer) e `shell/` (db, cli). Lê arquivos Markdown de `data/` e processa os dados populando a base local SQLite.
+- **`folio-mcp`** (`packages/mcp-server/`): Servidor MCP que expõe `list_topics`, `search_docs`, `get_document`. Possui `core/` (queries, mappers) e `shell/` (db, tools, handler) com conexão direta em SQLite.
 - **`folio-chat`** (`packages/chat/`): Interface web Chainlit e REPL CLI para testes locais.
 
 ## Requisitos
 
 - Python 3.14+
 - [uv](https://github.com/astral-sh/uv)
-- Docker & Docker Compose
-- [LocalStack CLI](https://docs.localstack.cloud/getting-started/installation/) (`awslocal` recomendado)
+- Docker
 
 ## Setup Rápido
 
 ```bash
-# Sobe infra, aplica migrations, baixa docs K8s, faz seed e sincroniza
-make bootstrap
+# Baixa base de dados de exemplo (kubernetes-docs) e indexa para o SQLite
+make k8s-docs
+make index
 ```
 
 ## Comandos Principais
 
-### Infraestrutura
+### Build e Infra
 
-- `make up`: Inicia Postgres e LocalStack, faz seed do S3 e sincroniza com o DB.
-- `make down`: Para os containers e LocalStack.
-- `make clean`: Remove containers, volumes e artefatos de build.
-- `make migrate`: Aplica migrations SQL de `infra/migrations/`.
-- `make seed`: Faz upload dos arquivos `.md` de `infra/seed/` para o bucket S3 local.
-- `make sync-full`: Executa sincronização manual completa S3 → DB.
+- `make k8s-docs`: Clona a documentação do Kubernetes em `/data` como massa de teste.
+- `make index`: Varre o diretório `data/` e cria/atualiza o banco de dados embutido `folio.sqlite`.
+- `make build-image`: Executa o build multi-stage Docker para gerar a imagem imutável `folio-mcp` autônoma (binário + SQLite).
+- `make clean`: Remove pastas temporárias e banco sqlite gerado.
 
 ### Desenvolvimento
 

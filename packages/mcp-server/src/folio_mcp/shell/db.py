@@ -1,48 +1,30 @@
-"""Async PostgreSQL connection pool for the MCP server."""
+"""Standalone SQLite connection provider for the MCP server."""
 
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+import os
+import sqlite3
+from collections.abc import Generator
+from contextlib import contextmanager
 
-from psycopg import AsyncConnection
-from psycopg_pool import AsyncConnectionPool
+import sqlite_vec
+import structlog
 
-from folio_mcp.shell.config import settings
+logger = structlog.get_logger()
 
-_pool: AsyncConnectionPool | None = None
-
-
-async def get_pool() -> AsyncConnectionPool:
-    """Return the shared connection pool, initializing it on first call."""
-    global _pool
-    if _pool is None:
-        conninfo = (
-            f"host={settings.database.host} "
-            f"port={settings.database.port} "
-            f"dbname={settings.database.name} "
-            f"user={settings.database.user} "
-            f"password={settings.database.password}"
-        )
-        _pool = AsyncConnectionPool(
-            conninfo,
-            min_size=settings.database.pool_min_size,
-            max_size=settings.database.pool_max_size,
-            kwargs={"options": f"-c statement_timeout={settings.database.statement_timeout_ms}"},
-        )
-        await _pool.open()
-    return _pool
+# We expect the SQLite DB to be at /app/folio.sqlite in docker or current dir.
+DB_PATH = os.getenv("FOLIO_MCP_DB_PATH", "folio.sqlite")
 
 
-@asynccontextmanager
-async def conn() -> AsyncIterator[AsyncConnection]:
-    """Yield a connection from the pool; auto-returns it on exit."""
-    pool = await get_pool()
-    async with pool.connection() as connection:
+@contextmanager
+def conn() -> Generator[sqlite3.Connection]:
+    """Yield a connection to the SQLite database with sqlite-vec enabled."""
+    connection = sqlite3.connect(DB_PATH)
+    connection.enable_load_extension(True)
+    sqlite_vec.load(connection)
+    connection.enable_load_extension(False)
+
+    # Enable FTS5 snippet and bm25 functions if needed, though they are built-in usually.
+    connection.row_factory = sqlite3.Row
+    try:
         yield connection
-
-
-async def close_pool() -> None:
-    """Close the connection pool and reset the singleton."""
-    global _pool
-    if _pool is not None:
-        await _pool.close()
-        _pool = None
+    finally:
+        connection.close()

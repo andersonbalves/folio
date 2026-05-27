@@ -7,7 +7,7 @@ from folio_mcp.core.queries import list_topics_sql
 from folio_mcp.shell.db import conn
 
 
-async def list_topics(category: str | None = None) -> ListTopicsResult:
+def list_topics(category: str | None = None) -> ListTopicsResult:
     """Lists available topics in the documentation.
 
     Use first to discover the platform's internal vocabulary.
@@ -16,7 +16,8 @@ async def list_topics(category: str | None = None) -> ListTopicsResult:
         category: Filter by category (e.g., "concept", "task", "starter", "adr").
     """
     sql, params = list_topics_sql(category)
-    async with conn() as c, c.cursor() as cur:
-        await cur.execute(sql, params)
-        rows = await cur.fetchall()
-    return map_topic_rows(rows)
+    with conn() as c:
+        cur = c.cursor()
+        cur.execute(sql, params)
+        rows = cur.fetchall()
+    return map_topic_rows([dict(r) for r in rows])

@@ -7,7 +7,7 @@ from folio_mcp.core.queries import get_document_sql
 from folio_mcp.shell.db import conn
 
 
-async def get_document(path: str) -> GetDocumentResult | None:
+def get_document(path: str) -> GetDocumentResult | None:
     """Returns the full markdown of a document.
 
     Use after search_docs to read the full content.
@@ -16,7 +16,8 @@ async def get_document(path: str) -> GetDocumentResult | None:
         path: Document path, e.g., "concepts/workloads/pods.md"
     """
     sql = get_document_sql()
-    async with conn() as c, c.cursor() as cur:
-        await cur.execute(sql, (path,))
-        row = await cur.fetchone()
-    return map_document_row(row)
+    with conn() as c:
+        cur = c.cursor()
+        cur.execute(sql, (path,))
+        row = cur.fetchone()
+    return map_document_row(dict(row) if row else None)
