@@ -15,5 +15,39 @@ services:
       timeout: 3s
       retries: 5
 
+  folio-sync:
+    build:
+      context: .
+      dockerfile: packages/doc-sync/Dockerfile
+    environment:
+      FOLIO_SYNC_DATABASE__HOST: postgres
+      FOLIO_SYNC_DATABASE__PORT: "5432"
+      FOLIO_SYNC_DATABASE__NAME: folio
+      FOLIO_SYNC_DATABASE__USER: folio
+      FOLIO_SYNC_DATABASE__PASSWORD: dev
+      FOLIO_SYNC_S3__ENDPOINT_URL: http://localstack:4566
+      FOLIO_SYNC_S3__ACCESS_KEY: test
+      FOLIO_SYNC_S3__SECRET_KEY: test
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  folio-mcp:
+    build:
+      context: .
+      dockerfile: packages/mcp-server/Dockerfile
+    environment:
+      FOLIO_MCP_DATABASE__HOST: postgres
+      FOLIO_MCP_DATABASE__PORT: "5432"
+      FOLIO_MCP_DATABASE__NAME: folio
+      FOLIO_MCP_DATABASE__USER: folio
+      FOLIO_MCP_DATABASE__PASSWORD: dev
+    ports:
+      - "8001:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   pgdata:
