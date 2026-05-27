@@ -20,7 +20,7 @@ def parse_markdown(raw: str) -> ParsedMarkdown:
         _, fm_yaml, body = raw.split("---\n", 2)
         fm = yaml.safe_load(fm_yaml) or {}
         return ParsedMarkdown(front_matter=fm, body=body.lstrip())
-    except ValueError, yaml.YAMLError:
+    except (ValueError, yaml.YAMLError):
         return ParsedMarkdown(front_matter={}, body=raw)
 
 
@@ -119,6 +119,6 @@ def infer_sort_order(path: str, front_matter: dict) -> int:
     if weight := front_matter.get("weight"):
         try:
             return int(weight)
-        except ValueError, TypeError:
+        except (ValueError, TypeError):
             pass
     return 0

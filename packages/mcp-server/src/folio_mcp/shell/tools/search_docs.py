@@ -24,6 +24,8 @@ def search_docs(query: str, limit: int = 10) -> SearchDocsResult:
         max_words=settings.search.snippet_max_words,
     )
     safe_query = sanitize_fts5_query(query)
+    if not safe_query:
+        return map_search_rows([], query)
     with conn() as c:
         cur = c.cursor()
         cur.execute(sql, (safe_query, limit))
