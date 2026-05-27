@@ -1,86 +1,14 @@
 """CLI entrypoint for standalone Folio indexing."""
 
 import argparse
-import json
 import sys
 from pathlib import Path
 
 import structlog
 
-from folio_sync.core.indexer import prepare_document
-from folio_sync.shell.db import connect_db, init_db
+from folio_sync.shell.db import SQLiteDocumentRepository, connect_db, init_db
 
 logger = structlog.get_logger()
-
-
-def upsert_document(conn, path: str, raw: str) -> bool:
-    """Index a document into SQLite. Returns True if changed."""
-    doc = prepare_document(path, raw)
-
-    cur = conn.cursor()
-    cur.execute("SELECT content_hash FROM documents WHERE path = ?", (doc["path"],))
-    row = cur.fetchone()
-    if row and row[0] == doc["content_hash"]:
-        return False
-
-    # Upsert na tabela base
-    cur.execute(
-        """
-        INSERT INTO documents (path, title, content, content_hash, metadata)
-        VALUES (?, ?, ?, ?, ?)
-        ON CONFLICT(path) DO UPDATE SET
-            title=excluded.title,
-            content=excluded.content,
-            content_hash=excluded.content_hash,
-            metadata=excluded.metadata,
-            updated_at=CURRENT_TIMESTAMP
-    """,
-        (
-            doc["path"],
-            doc["title"],
-            doc["content"],
-            doc["content_hash"],
-            doc.get("metadata", "{}")
-            if isinstance(doc.get("metadata"), str)
-            else json.dumps(doc.get("metadata", {})),
-        ),
-    )
-
-    # Sincronizar FTS5. Remove antigo e reinsere.
-    cur.execute("DELETE FROM documents_fts WHERE path = ?", (doc["path"],))
-    cur.execute(
-        """
-        INSERT INTO documents_fts (path, title, content)
-        VALUES (?, ?, ?)
-    """,
-        (doc["path"], doc["title"], doc["content"]),
-    )
-
-    # Upsert em topics
-    if doc.get("slug"):
-        cur.execute(
-            """
-            INSERT INTO topics (slug, title, description, category, doc_path, sort_order)
-            VALUES (?, ?, ?, ?, ?, ?)
-            ON CONFLICT(slug) DO UPDATE SET
-                title=excluded.title,
-                description=excluded.description,
-                category=excluded.category,
-                doc_path=excluded.doc_path,
-                sort_order=excluded.sort_order,
-                updated_at=CURRENT_TIMESTAMP
-        """,
-            (
-                doc["slug"],
-                doc["title"],
-                doc["description"],
-                doc["category"],
-                doc["path"],
-                doc["sort_order"],
-            ),
-        )
-
-    return True
 
 
 def main():
@@ -103,6 +31,7 @@ def main():
     stats = {"scanned": 0, "indexed": 0, "skipped": 0}
 
     with connect_db(db_path) as conn:
+        repo = SQLiteDocumentRepository(conn)
         for md_file in data_dir.rglob("*.md"):
             stats["scanned"] += 1
             rel_path = str(md_file.relative_to(data_dir))
@@ -112,7 +41,7 @@ def main():
                 logger.error("file.read_error", path=rel_path, error=str(e))
                 continue
 
-            changed = upsert_document(conn, rel_path, raw_content)
+            changed = repo.upsert_document(rel_path, raw_content)
             if changed:
                 stats["indexed"] += 1
                 logger.info("doc.indexed", path=rel_path)

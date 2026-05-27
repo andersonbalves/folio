@@ -22,13 +22,13 @@ def conn() -> Generator[sqlite3.Connection]:
         raise FileNotFoundError(f"Database file not found: {DB_PATH}")
 
     connection = sqlite3.connect(DB_PATH)
-    connection.enable_load_extension(True)
-    sqlite_vec.load(connection)
-    connection.enable_load_extension(False)
-
-    # Enable FTS5 snippet and bm25 functions if needed, though they are built-in usually.
-    connection.row_factory = sqlite3.Row
     try:
+        connection.enable_load_extension(True)
+        sqlite_vec.load(connection)
+        connection.enable_load_extension(False)
+
+        # Enable FTS5 snippet and bm25 functions if needed, though they are built-in usually.
+        connection.row_factory = sqlite3.Row
         yield connection
     finally:
         connection.close()
