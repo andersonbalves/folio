@@ -38,7 +38,7 @@ def rrf_merge(
         if key not in by_key:
             by_key[key] = match
 
-    sorted_keys = sorted(scores.keys(), key=lambda k: scores[k], reverse=True)[:limit]
+    sorted_keys = sorted(scores.keys(), key=scores.__getitem__, reverse=True)[:limit]
     return [
         ChunkMatch(
             doc_path=by_key[key].doc_path,

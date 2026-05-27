@@ -83,7 +83,12 @@ def test_main_runs_correctly(
 
     mock_init_db.assert_called_once_with(db_path, mock_embedder)
     mock_connect_db.assert_called_once_with(db_path)
-    mock_repo_cls.assert_called_once_with(mock_conn, mock_embedder)
+    mock_repo_cls.assert_called_once_with(
+        mock_conn,
+        mock_embedder,
+        chunk_size=512,
+        chunk_max_size=1024,
+    )
     mock_repo_instance.upsert_document.assert_called_once_with("test.md", "Hello")
     mock_repo_instance.write_meta.assert_called()
     assert mock_conn.commit.called

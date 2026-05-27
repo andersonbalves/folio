@@ -44,7 +44,12 @@ def main():
     stats = {"scanned": 0, "indexed": 0, "skipped": 0}
 
     with connect_db(db_path) as conn:
-        repo = SQLiteDocumentRepository(conn, embedder)
+        repo = SQLiteDocumentRepository(
+            conn,
+            embedder,
+            chunk_size=preferred_size,
+            chunk_max_size=max_size,
+        )
         for md_file in data_dir.rglob("*.md"):
             stats["scanned"] += 1
             rel_path = str(md_file.relative_to(data_dir))

@@ -6,7 +6,7 @@ import json
 import sqlite3
 import struct
 from collections.abc import Generator
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -113,10 +113,18 @@ def connect_db(db_path: Path) -> Generator[sqlite3.Connection]:
 class SQLiteDocumentRepository:
     """Deep SQLite repository adapter for documents."""
 
-    def __init__(self, conn: sqlite3.Connection, embedder: Embedder | None = None):
+    def __init__(
+        self,
+        conn: sqlite3.Connection,
+        embedder: Embedder | None = None,
+        chunk_size: int = 512,
+        chunk_max_size: int = 1024,
+    ):
         """Initialize repository with a database connection and optional embedder."""
         self._conn = conn
         self._embedder = embedder
+        self._chunk_size = chunk_size
+        self._chunk_max_size = chunk_max_size
 
     def upsert_document(self, path: str, raw: str) -> bool:
         """Index document + split into chunks + embed. Returns True if changed."""
@@ -189,7 +197,7 @@ class SQLiteDocumentRepository:
             )
 
         # Delete old chunk embeddings before deleting chunks (FK constraint)
-        if self._embedder is not None and self._embedder.dimensions > 0:
+        with suppress(sqlite3.OperationalError):
             cur.execute(
                 "DELETE FROM chunk_embeddings"
                 " WHERE chunk_id IN (SELECT id FROM chunks WHERE doc_path = ?)",
@@ -201,7 +209,11 @@ class SQLiteDocumentRepository:
         cur.execute("DELETE FROM chunks WHERE doc_path = ?", (doc["path"],))
 
         # Split content into chunks
-        chunks = split_document(doc["content"])
+        chunks = split_document(
+            doc["content"],
+            preferred_size=self._chunk_size,
+            max_size=self._chunk_max_size,
+        )
 
         # Collect texts for batch embedding
         chunk_ids: list[int] = []

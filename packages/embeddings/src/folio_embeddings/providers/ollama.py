@@ -54,9 +54,11 @@ class OllamaEmbedder:
         )
         response.raise_for_status()
         data: dict[str, object] = response.json()
-        embedding = data["embedding"]
+        if "error" in data:
+            raise ValueError(f"Ollama API error: {data['error']}")
+        embedding = data.get("embedding")
         if not isinstance(embedding, list):
-            raise ValueError(f"Unexpected embedding format from Ollama: {type(embedding)}")
+            raise ValueError(f"Unexpected embedding format from Ollama: {embedding}")
         return [float(v) for v in embedding]
 
     def embed(self, texts: list[str]) -> list[list[float]]:
