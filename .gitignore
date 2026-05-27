@@ -241,3 +241,5 @@ __marimo__/
 /QUESTIONS.md
 .antigravitycli/
 .chainlit/
+/MIGRATION_STANDALONE_MCP.md
+/EVOLUTION-SEMANTIC-SEARCH.MD
