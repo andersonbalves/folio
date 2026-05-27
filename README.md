@@ -4,21 +4,22 @@ Folio é um sistema de gerenciamento de conhecimento (RAG-ready) que sincroniza 
 
 ## Arquitetura
 
-- **`folio-core`**: Lógica pura de domínio (parsing, hashing, categorização).
-- **`folio-sync`**: Sincronização event-driven S3 -> Postgres via SQS/SNS.
-- **`folio-mcp`**: Servidor MCP que expõe ferramentas de busca e listagem.
+- **`folio-core`** (`packages/core/`): Tipos de domínio compartilhados e helper SQL. Apenas `models.py` e `sql.py`.
+- **`folio-sync`** (`packages/doc-sync/`): Sincronização S3 → Postgres. Possui `core/` próprio (parser, hasher, categorizer, indexer) e `shell/` (db, s3_client, indexer, handler).
+- **`folio-mcp`** (`packages/mcp-server/`): Servidor MCP que expõe `list_topics`, `search_docs`, `get_document`. Possui `core/` (queries, mappers) e `shell/` (db, tools, handler).
+- **`folio-chat`** (`packages/chat/`): Interface web Chainlit e REPL CLI para testes locais.
 
 ## Requisitos
 
 - Python 3.14+
 - [uv](https://github.com/astral-sh/uv)
 - Docker & Docker Compose
-- [LocalStack CLI](https://docs.localstack.cloud/getting-started/installation/) (opcional, `awslocal` recomendado)
+- [LocalStack CLI](https://docs.localstack.cloud/getting-started/installation/) (`awslocal` recomendado)
 
 ## Setup Rápido
 
 ```bash
-# Sobe infra, aplica migrations, baixa docs K8s, faz seed e deploy das Lambdas
+# Sobe infra, aplica migrations, baixa docs K8s, faz seed e sincroniza
 make bootstrap
 ```
 
@@ -26,45 +27,19 @@ make bootstrap
 
 ### Infraestrutura
 
-- `make up`: Inicia Postgres e LocalStack, faz seed do S3 e sincroniza com o DB automaticamente.
-- `make down`: Para os containers.
+- `make up`: Inicia Postgres e LocalStack, faz seed do S3 e sincroniza com o DB.
+- `make down`: Para os containers e LocalStack.
 - `make clean`: Remove containers, volumes e artefatos de build.
+- `make migrate`: Aplica migrations SQL de `infra/migrations/`.
+- `make seed`: Faz upload dos arquivos `.md` de `infra/seed/` para o bucket S3 local.
+- `make sync-full`: Executa sincronização manual completa S3 → DB.
 
 ### Desenvolvimento
 
 - `make serve`: Roda o servidor MCP localmente via stdio.
-- `make chat`: Abre REPL conversacional no terminal com Ollama + MCP (legado).
-- `make chat-web`: Abre a interface Web do agente conversacional (Chainlit) conectada ao MCP hospedado no LocalStack.
-- `make start-localstack`: Sobe o container do Localstack via CLI local.
-- `make deploy-mcp`: Faz o build da imagem Docker do MCP com Lambda Web Adapter (LWA) e publica como Lambda Function URL no Localstack via `awslocal`.
-- `make seed`: Faz upload dos arquivos `.md` de `seed/` para o bucket S3 local.
-- `make sync-full`: Executa uma sincronização manual completa S3 -> DB.
-- `make migrate`: Aplica migrations SQL.
-
-### AWS Lambdas (LocalStack)
-
-- `make build`: Empacota as Lambdas em `dist/`.
-- `make deploy-local`: Faz o deploy das Lambdas no LocalStack.
-- `make invoke-mcp PAYLOAD='...'`: Invoca a Lambda MCP.
-
-**Exemplos por ferramenta:**
-
-```bash
-# list_topics — lista todos os tópicos indexados
-make invoke-mcp PAYLOAD='{"tool":"list_topics","arguments":{}}'
-
-# list_topics — filtrado por categoria
-make invoke-mcp PAYLOAD='{"tool":"list_topics","arguments":{"category":"concept"}}'
-
-# search_docs — busca textual BM25 (suporta websearch syntax)
-make invoke-mcp PAYLOAD='{"tool":"search_docs","arguments":{"query":"scheduling pods affinity"}}'
-
-# search_docs — com limite customizado
-make invoke-mcp PAYLOAD='{"tool":"search_docs","arguments":{"query":"persistent volume claim","limit":5}}'
-
-# get_document — conteúdo completo de um documento (path vem do list_topics ou search_docs)
-make invoke-mcp PAYLOAD='{"tool":"get_document","arguments":{"path":"concepts/workloads/pods.md"}}'
-```
+- `make serve-http`: Roda o servidor MCP via SSE na porta 8001.
+- `make chat`: Abre REPL conversacional no terminal com Ollama + MCP.
+- `make chat-web`: Abre a interface Web Chainlit (requer `make serve-http` em outro terminal).
 
 ### Qualidade
 
