@@ -2,8 +2,6 @@
 
 from folio_core.models import GetDocumentResult
 
-from folio_mcp.core.mappers import map_document_row
-from folio_mcp.core.queries import get_document_sql
 from folio_mcp.shell.db import conn
 
 
@@ -15,9 +13,18 @@ def get_document(path: str) -> GetDocumentResult | None:
     Args:
         path: Document path, e.g., "concepts/workloads/pods.md"
     """
-    sql = get_document_sql()
+    sql = "SELECT path, title, content, metadata FROM documents WHERE path = ?"
     with conn() as c:
         cur = c.cursor()
         cur.execute(sql, (path,))
         row = cur.fetchone()
-    return map_document_row(row)
+
+    if row is None:
+        return None
+    import json
+    return GetDocumentResult(
+        path=row["path"],
+        title=row["title"],
+        content=row["content"],
+        metadata=json.loads(row["metadata"]) if isinstance(row["metadata"], str) else row["metadata"]
+    )

@@ -1,11 +1,18 @@
 """Tool: search_docs. BM25 via Postgres FTS."""
 
-from folio_core.models import SearchDocsResult
+import re
 
-from folio_mcp.core.mappers import map_search_rows
-from folio_mcp.core.queries import sanitize_fts5_query, search_docs_sql
+from folio_core.models import SearchDocsResult, SearchMatch
+
 from folio_mcp.shell.config import settings
 from folio_mcp.shell.db import conn
+
+
+def sanitize_fts5_query(query: str) -> str:
+    """Sanitize user input for SQLite FTS5 MATCH clause to prevent syntax errors."""
+    q = re.sub(r"[/*\"\'()~^:+-]", " ", query)
+    terms = [f'"{term}"' for term in q.split() if term]
+    return " ".join(terms)
 
 
 def search_docs(query: str, limit: int = 10) -> SearchDocsResult:
@@ -19,15 +26,34 @@ def search_docs(query: str, limit: int = 10) -> SearchDocsResult:
         limit: Maximum number of results (1-50).
     """
     limit = min(max(limit, 1), settings.search.max_limit)
-    sql = search_docs_sql(
-        max_fragments=settings.search.snippet_max_fragments,
-        max_words=settings.search.snippet_max_words,
-    )
     safe_query = sanitize_fts5_query(query)
+
     if not safe_query:
-        return map_search_rows([], query)
+        return SearchDocsResult(matches=[], query=query)
+
+    sql = """
+        SELECT
+            path, title,
+            -bm25(documents_fts) AS rank,
+            snippet(documents_fts, -1, '<mark>', '</mark>', '...', 64) AS snippet
+        FROM documents_fts
+        WHERE documents_fts MATCH ?
+        ORDER BY rank DESC
+        LIMIT ?
+    """
+
     with conn() as c:
         cur = c.cursor()
         cur.execute(sql, (safe_query, limit))
         rows = cur.fetchall()
-    return map_search_rows(rows, query)
+
+    matches = [
+        SearchMatch(
+            path=r["path"],
+            title=r["title"],
+            rank=float(r["rank"]),
+            snippet=r["snippet"],
+        )
+        for r in rows
+    ]
+    return SearchDocsResult(matches=matches, query=query)

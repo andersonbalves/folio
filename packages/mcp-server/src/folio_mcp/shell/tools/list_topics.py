@@ -1,9 +1,7 @@
 """Tool: list_topics."""
 
-from folio_core.models import ListTopicsResult
+from folio_core.models import ListTopicsResult, Topic
 
-from folio_mcp.core.mappers import map_topic_rows
-from folio_mcp.core.queries import list_topics_sql
 from folio_mcp.shell.db import conn
 
 
@@ -15,9 +13,33 @@ def list_topics(category: str | None = None) -> ListTopicsResult:
     Args:
         category: Filter by category (e.g., "concept", "task", "starter", "adr").
     """
-    sql, params = list_topics_sql(category)
+    if category:
+        sql = (
+            "SELECT slug, title, description, category, doc_path, sort_order "
+            "FROM topics WHERE category = ? ORDER BY category, sort_order, title"
+        )
+        params = (category,)
+    else:
+        sql = (
+            "SELECT slug, title, description, category, doc_path, sort_order "
+            "FROM topics ORDER BY category, sort_order, title"
+        )
+        params = ()
+
     with conn() as c:
         cur = c.cursor()
         cur.execute(sql, params)
         rows = cur.fetchall()
-    return map_topic_rows(rows)
+
+    topics = [
+        Topic(
+            slug=r["slug"],
+            title=r["title"],
+            description=r["description"],
+            category=r["category"],
+            doc_path=r["doc_path"],
+            sort_order=r["sort_order"],
+        )
+        for r in rows
+    ]
+    return ListTopicsResult(topics=topics, total=len(topics))
