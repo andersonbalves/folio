@@ -3,7 +3,8 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from folio_sync.shell.cli import main, upsert_document
+from folio_sync.shell.cli import main
+from folio_sync.shell.db import SQLiteDocumentRepository
 
 
 @pytest.fixture
@@ -18,8 +19,9 @@ def test_upsert_document_new(mock_conn):
     cur = mock_conn.cursor.return_value
     cur.fetchone.return_value = None
 
+    repo = SQLiteDocumentRepository(mock_conn)
     content = "---\ntitle: Test\n---\nBody"
-    changed = upsert_document(mock_conn, "test.md", content)
+    changed = repo.upsert_document("test.md", content)
 
     assert changed is True
     assert cur.execute.call_count >= 3
@@ -37,14 +39,16 @@ def test_upsert_document_unchanged(mock_conn):
     doc = prepare_document("test.md", content)
     cur.fetchone.return_value = [doc["content_hash"]]
 
-    changed = upsert_document(mock_conn, "test.md", content)
+    repo = SQLiteDocumentRepository(mock_conn)
+    changed = repo.upsert_document("test.md", content)
 
     assert changed is False
 
 
 @patch("folio_sync.shell.cli.connect_db")
 @patch("folio_sync.shell.cli.init_db")
-def test_main_runs_correctly(mock_init_db, mock_connect_db, tmp_path):
+@patch("folio_sync.shell.cli.SQLiteDocumentRepository")
+def test_main_runs_correctly(mock_repo_cls, mock_init_db, mock_connect_db, tmp_path):
     """Test the main CLI flow."""
     import sys
 
@@ -61,6 +65,10 @@ def test_main_runs_correctly(mock_init_db, mock_connect_db, tmp_path):
     mock_connect_db.return_value.__enter__.return_value = mock_conn
     mock_cur = mock_conn.cursor.return_value
     mock_cur.fetchone.return_value = None
+    
+    mock_repo_instance = MagicMock()
+    mock_repo_instance.upsert_document.return_value = True
+    mock_repo_cls.return_value = mock_repo_instance
 
     test_args = ["cli", str(data_dir), str(db_path)]
     with patch.object(sys, "argv", test_args):
@@ -68,4 +76,6 @@ def test_main_runs_correctly(mock_init_db, mock_connect_db, tmp_path):
 
     mock_init_db.assert_called_once_with(db_path)
     mock_connect_db.assert_called_once_with(db_path)
+    mock_repo_cls.assert_called_once_with(mock_conn)
+    mock_repo_instance.upsert_document.assert_called_once_with("test.md", "Hello")
     assert mock_conn.commit.called
