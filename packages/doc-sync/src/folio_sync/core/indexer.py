@@ -2,15 +2,15 @@
 
 import json
 
-from folio_sync.core.categorizer import (
+from folio_sync.core.document import (
+    content_hash,
     infer_category,
     infer_description,
     infer_slug,
     infer_sort_order,
     infer_title,
+    parse_markdown,
 )
-from folio_sync.core.hasher import content_hash
-from folio_sync.core.parser import parse_markdown
 
 
 def prepare_document(path: str, raw: str) -> dict:
