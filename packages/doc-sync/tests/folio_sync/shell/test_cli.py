@@ -1,5 +1,6 @@
 """Test for CLI module."""
 
+import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -48,10 +49,11 @@ def test_upsert_document_unchanged(mock_conn):
 @patch("folio_sync.shell.cli.connect_db")
 @patch("folio_sync.shell.cli.init_db")
 @patch("folio_sync.shell.cli.SQLiteDocumentRepository")
-def test_main_runs_correctly(mock_repo_cls, mock_init_db, mock_connect_db, tmp_path):
+@patch("folio_sync.shell.cli.create_embedder")
+def test_main_runs_correctly(
+    mock_create_embedder, mock_repo_cls, mock_init_db, mock_connect_db, tmp_path
+):
     """Test the main CLI flow."""
-    import sys
-
     # Setup a dummy directory and file
     data_dir = tmp_path / "data"
     data_dir.mkdir()
@@ -60,12 +62,17 @@ def test_main_runs_correctly(mock_repo_cls, mock_init_db, mock_connect_db, tmp_p
 
     db_path = tmp_path / "folio.sqlite"
 
+    mock_embedder = MagicMock()
+    mock_embedder.model_id = "none"
+    mock_embedder.dimensions = 0
+    mock_create_embedder.return_value = mock_embedder
+
     mock_conn = MagicMock()
     # To mock the context manager
     mock_connect_db.return_value.__enter__.return_value = mock_conn
     mock_cur = mock_conn.cursor.return_value
     mock_cur.fetchone.return_value = None
-    
+
     mock_repo_instance = MagicMock()
     mock_repo_instance.upsert_document.return_value = True
     mock_repo_cls.return_value = mock_repo_instance
@@ -74,8 +81,9 @@ def test_main_runs_correctly(mock_repo_cls, mock_init_db, mock_connect_db, tmp_p
     with patch.object(sys, "argv", test_args):
         main()
 
-    mock_init_db.assert_called_once_with(db_path)
+    mock_init_db.assert_called_once_with(db_path, mock_embedder)
     mock_connect_db.assert_called_once_with(db_path)
-    mock_repo_cls.assert_called_once_with(mock_conn)
+    mock_repo_cls.assert_called_once_with(mock_conn, mock_embedder)
     mock_repo_instance.upsert_document.assert_called_once_with("test.md", "Hello")
+    mock_repo_instance.write_meta.assert_called()
     assert mock_conn.commit.called

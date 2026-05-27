@@ -1,20 +1,28 @@
 """Database initialization and connection management for the standalone SQLite architecture."""
 
+from __future__ import annotations
+
 import json
 import sqlite3
+import struct
 from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import sqlite_vec
 import structlog
+from folio_core.splitter import split_document
 
 from folio_sync.core.indexer import prepare_document
+
+if TYPE_CHECKING:
+    from folio_embeddings import Embedder
 
 logger = structlog.get_logger()
 
 
-def init_db(db_path: Path):
+def init_db(db_path: Path, embedder: Embedder | None = None) -> None:
     """Inicializa o schema do SQLite."""
     logger.info("db.init", path=str(db_path))
     db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -51,6 +59,40 @@ def init_db(db_path: Path):
                 tokenize='trigram'
             )
         """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS chunks (
+                id INTEGER PRIMARY KEY,
+                doc_path TEXT NOT NULL,
+                chunk_index INTEGER NOT NULL,
+                heading_path TEXT NOT NULL DEFAULT '',
+                content TEXT NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (doc_path) REFERENCES documents(path) ON DELETE CASCADE
+            )
+        """)
+        conn.execute("""
+            CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts USING fts5(
+                chunk_id UNINDEXED,
+                doc_path UNINDEXED,
+                heading_path UNINDEXED,
+                content,
+                tokenize='trigram'
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS meta (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        if embedder is not None and embedder.dimensions > 0:
+            conn.execute(f"""
+                CREATE VIRTUAL TABLE IF NOT EXISTS chunk_embeddings USING vec0(
+                    chunk_id INTEGER PRIMARY KEY,
+                    embedding float[{embedder.dimensions}]
+                )
+            """)
         conn.commit()
 
 
@@ -71,12 +113,13 @@ def connect_db(db_path: Path) -> Generator[sqlite3.Connection]:
 class SQLiteDocumentRepository:
     """Deep SQLite repository adapter for documents."""
 
-    def __init__(self, conn: sqlite3.Connection):
-        """Initialize repository with a database connection."""
+    def __init__(self, conn: sqlite3.Connection, embedder: Embedder | None = None):
+        """Initialize repository with a database connection and optional embedder."""
         self._conn = conn
+        self._embedder = embedder
 
     def upsert_document(self, path: str, raw: str) -> bool:
-        """Index a document into SQLite. Returns True if changed."""
+        """Index document + split into chunks + embed. Returns True if changed."""
         doc = prepare_document(path, raw)
 
         cur = self._conn.cursor()
@@ -118,7 +161,7 @@ class SQLiteDocumentRepository:
             (doc["path"], doc["title"], doc["content"]),
         )
 
-        # Sincronizar topics. Remove antigo para evitar órfãos/duplicados se o slug mudou ou foi removido.
+        # Sincronizar topics. Remove antigo para evitar órfãos/duplicados se o slug mudou.
         cur.execute("DELETE FROM topics WHERE doc_path = ?", (doc["path"],))
 
         # Upsert em topics
@@ -145,4 +188,60 @@ class SQLiteDocumentRepository:
                 ),
             )
 
+        # Delete old chunk embeddings before deleting chunks (FK constraint)
+        if self._embedder is not None and self._embedder.dimensions > 0:
+            cur.execute(
+                "DELETE FROM chunk_embeddings"
+                " WHERE chunk_id IN (SELECT id FROM chunks WHERE doc_path = ?)",
+                (doc["path"],),
+            )
+
+        # Delete old chunks and chunks_fts
+        cur.execute("DELETE FROM chunks_fts WHERE doc_path = ?", (doc["path"],))
+        cur.execute("DELETE FROM chunks WHERE doc_path = ?", (doc["path"],))
+
+        # Split content into chunks
+        chunks = split_document(doc["content"])
+
+        # Collect texts for batch embedding
+        chunk_ids: list[int] = []
+        chunk_texts: list[str] = []
+
+        for chunk in chunks:
+            cur.execute(
+                "INSERT INTO chunks (doc_path, chunk_index, heading_path, content)"
+                " VALUES (?, ?, ?, ?)",
+                (doc["path"], chunk.index, chunk.heading_path, chunk.text),
+            )
+            chunk_id = cur.lastrowid
+            cur.execute(
+                "INSERT INTO chunks_fts (chunk_id, doc_path, heading_path, content)"
+                " VALUES (?, ?, ?, ?)",
+                (chunk_id, doc["path"], chunk.heading_path, chunk.text),
+            )
+            chunk_ids.append(chunk_id)  # type: ignore[arg-type]
+            chunk_texts.append(chunk.text)
+
+        # Embed and store vectors if embedder is configured
+        if self._embedder is not None and self._embedder.dimensions > 0 and chunk_texts:
+            vectors = self._embedder.embed(chunk_texts)
+            for chunk_id, vector in zip(chunk_ids, vectors, strict=True):
+                embedding_blob = struct.pack(f"{len(vector)}f", *vector)
+                cur.execute(
+                    "INSERT INTO chunk_embeddings (chunk_id, embedding) VALUES (?, ?)",
+                    (chunk_id, embedding_blob),
+                )
+
         return True
+
+    def write_meta(self, key: str, value: str) -> None:
+        """Upsert a key-value pair into the meta table."""
+        cur = self._conn.cursor()
+        cur.execute(
+            """
+            INSERT INTO meta (key, value)
+            VALUES (?, ?)
+            ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=CURRENT_TIMESTAMP
+        """,
+            (key, value),
+        )

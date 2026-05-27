@@ -915,6 +915,7 @@ source = { editable = "packages/doc-sync" }
 dependencies = [
     { name = "dynaconf" },
     { name = "folio-core" },
+    { name = "folio-embeddings" },
     { name = "pyyaml" },
     { name = "sqlite-vec" },
     { name = "structlog" },
@@ -924,6 +925,7 @@ dependencies = [
 requires-dist = [
     { name = "dynaconf", specifier = ">=3.2.13" },
     { name = "folio-core", editable = "packages/core" },
+    { name = "folio-embeddings", editable = "packages/embeddings" },
     { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "sqlite-vec", specifier = ">=0.1.9" },
     { name = "structlog", specifier = ">=25.5.0" },
