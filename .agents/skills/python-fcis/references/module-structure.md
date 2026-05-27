@@ -27,6 +27,30 @@ src/
 └── services.py       # Orchestration: shell→core→shell
 ```
 
+## Layout for a Folio-style Package (explicit core/ and shell/ sub-packages)
+
+Each application package in Folio (folio-sync, folio-mcp) uses explicit subdirectories:
+
+```
+folio_sync/
+  core/
+    __init__.py
+    parser.py       # pure functions
+    hasher.py       # pure functions
+    categorizer.py  # pure functions
+    indexer.py      # pure orchestration
+  shell/
+    __init__.py
+    db.py           # I/O: psycopg pool
+    s3_client.py    # I/O: boto3
+    indexer.py      # I/O: DB writes, calls core/indexer.py
+    handler.py      # entrypoint
+```
+
+`folio-core` is the shared minimum — only `models.py` and `sql.py`, no sub-packages.
+Import rules: `*.core.*` may import from `folio_core` only; `*.shell.*` may import from
+`*.core.*` and `folio_core`; `folio_core` never imports from any other workspace package.
+
 ## What Goes in Each File
 
 ### domain.py
