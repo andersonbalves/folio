@@ -1,4 +1,4 @@
-.PHONY: clean k8s-docs index build-image serve serve-http chat chat-web test lint typecheck format check
+.PHONY: clean k8s-docs index build-image export-image serve serve-http chat chat-web test lint typecheck format check
 
 NAME := folio
 
@@ -23,6 +23,10 @@ index:
 
 build-image:
 	docker build -t $(NAME)-mcp .
+
+export-image: build-image
+	docker save -o $(NAME)-mcp.tar $(NAME)-mcp
+	@echo "Imagem exportada para $(NAME)-mcp.tar. Pronta para compartilhamento."
 
 # === Dev local ===
 serve:
