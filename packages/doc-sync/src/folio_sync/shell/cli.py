@@ -2,10 +2,13 @@
 
 import argparse
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 
 import structlog
+from folio_embeddings import create_embedder
 
+from folio_sync.shell.config import settings
 from folio_sync.shell.db import SQLiteDocumentRepository, connect_db, init_db
 
 logger = structlog.get_logger()
@@ -25,13 +28,28 @@ def main():
         logger.error("cli.data_dir_not_found", data_dir=str(data_dir))
         sys.exit(1)
 
+    provider = settings.get("embedder", "none")
+    model = settings.get("embedder_model", "")
+    preferred_size = int(settings.get("chunk_size", 512))
+    max_size = int(settings.get("chunk_max_size", 1024))
+
+    embedder = create_embedder(provider, model)
+    logger.info(
+        "cli.embedder", provider=provider, model=embedder.model_id, dimensions=embedder.dimensions
+    )
+
     # Inicializa o banco (Auto-inicialização do Schema)
-    init_db(db_path)
+    init_db(db_path, embedder)
 
     stats = {"scanned": 0, "indexed": 0, "skipped": 0}
 
     with connect_db(db_path) as conn:
-        repo = SQLiteDocumentRepository(conn)
+        repo = SQLiteDocumentRepository(
+            conn,
+            embedder,
+            chunk_size=preferred_size,
+            chunk_max_size=max_size,
+        )
         for md_file in data_dir.rglob("*.md"):
             stats["scanned"] += 1
             rel_path = str(md_file.relative_to(data_dir))
@@ -47,6 +65,11 @@ def main():
                 logger.info("doc.indexed", path=rel_path)
             else:
                 stats["skipped"] += 1
+
+        repo.write_meta("embedder_model", embedder.model_id)
+        repo.write_meta("chunk_size", str(preferred_size))
+        repo.write_meta("chunk_max_size", str(max_size))
+        repo.write_meta("indexed_at", datetime.now(UTC).isoformat())
 
         conn.commit()
 

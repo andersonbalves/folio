@@ -4,9 +4,10 @@ Folio é um sistema de gerenciamento de conhecimento (RAG-ready) que indexa docu
 
 ## Arquitetura
 
-- **`folio-core`** (`packages/core/`): Tipos de domínio compartilhados e helper SQL. Apenas `models.py` e `sql.py`.
-- **`folio-sync`** (`packages/doc-sync/`): Indexador local. Possui `core/` próprio (parser, hasher, categorizer, indexer) e `shell/` (db, cli). Lê arquivos Markdown de `data/` e processa os dados populando a base local SQLite.
-- **`folio-mcp`** (`packages/mcp-server/`): Servidor MCP que expõe `list_topics`, `search_docs`, `get_document`. Possui `core/` (queries, mappers) e `shell/` (db, tools, handler) com conexão direta em SQLite.
+- **`folio-core`** (`packages/core/`): Tipos de domínio compartilhados e helper SQL. `models.py`, `sql.py` e `splitter.py` (chunking de documentos Markdown).
+- **`folio-embeddings`** (`packages/embeddings/`): Protocolo de embedding compartilhado com providers: `none`, `ollama`, `fastembed`, `openai`.
+- **`folio-sync`** (`packages/doc-sync/`): Indexador local. Possui `core/` próprio (parser, hasher, categorizer, indexer) e `shell/` (db, cli). Lê arquivos Markdown de `data/`, divide em chunks e popula SQLite com FTS5 e vetores (se configurado).
+- **`folio-mcp`** (`packages/mcp-server/`): Servidor MCP que expõe `list_topics`, `lexical_search`, `semantic_search`, `hybrid_search`, `get_document`. Possui `core/` (ranking RRF) e `shell/` (db, tools, handler) com conexão direta em SQLite.
 - **`folio-chat`** (`packages/chat/`): Interface web Chainlit e REPL CLI para testes locais.
 
 ## Requisitos
@@ -38,6 +39,39 @@ make index
 - `make serve-http`: Roda o servidor MCP via SSE na porta 8001.
 - `make chat`: Abre REPL conversacional no terminal com Ollama + MCP.
 - `make chat-web`: Abre a interface Web Chainlit (requer `make serve-http` em outro terminal).
+
+## Busca Semântica (opcional)
+
+Por padrão, apenas busca lexical (BM25) está disponível. Para habilitar busca semântica e híbrida, configure um provider de embeddings:
+
+### Variáveis de ambiente (indexação — prefixo `FOLIO_SYNC_`)
+
+| Variável | Padrão | Descrição |
+|----------|--------|-----------|
+| `FOLIO_SYNC_EMBEDDER` | `none` | Provider: `none`, `ollama`, `fastembed`, `openai` |
+| `FOLIO_SYNC_EMBEDDER_MODEL` | `""` | Modelo do provider (ex: `BAAI/bge-small-en-v1.5`) |
+| `FOLIO_SYNC_CHUNK_SIZE` | `512` | Tamanho preferencial de chunk em tokens |
+| `FOLIO_SYNC_CHUNK_MAX_SIZE` | `1024` | Tamanho máximo de chunk em tokens |
+
+### Variáveis de ambiente (servidor MCP — prefixo `FOLIO_MCP_`)
+
+| Variável | Padrão | Descrição |
+|----------|--------|-----------|
+| `FOLIO_MCP_DB_PATH` | `folio.sqlite` | Caminho para o banco SQLite |
+| `FOLIO_MCP_EMBEDDER` | `none` | Mesmo provider usado na indexação |
+| `FOLIO_MCP_EMBEDDER_MODEL` | `""` | Mesmo modelo usado na indexação |
+
+O modelo configurado no MCP deve ser idêntico ao usado na indexação — caso contrário o servidor recusa inicializar.
+
+### Exemplo com fastembed
+
+```bash
+# .env
+FOLIO_SYNC_EMBEDDER=fastembed
+FOLIO_SYNC_EMBEDDER_MODEL=BAAI/bge-small-en-v1.5
+FOLIO_MCP_EMBEDDER=fastembed
+FOLIO_MCP_EMBEDDER_MODEL=BAAI/bge-small-en-v1.5
+```
 
 ### Qualidade
 

@@ -134,15 +134,15 @@ async def on_message(message: cl.Message):
 
 
 async def _handle_message(message: cl.Message) -> None:
-    session: ClientSession = cl.user_session.get("mcp_session")
+    session: ClientSession | None = cl.user_session.get("mcp_session")  # type: ignore[assignment]
     if not session:
         await cl.Message(content="Not connected to MCP. Please check the logs.").send()
         return
 
-    mcp_tools = cl.user_session.get("mcp_tools", [])
+    mcp_tools: list[mcp.types.Tool] = cl.user_session.get("mcp_tools") or []
     openai_tools = [mcp_tool_to_openai(t) for t in mcp_tools]
 
-    messages = cl.user_session.get("messages", [])
+    messages: list = cl.user_session.get("messages") or []
     messages.append({"role": "user", "content": message.content})
 
     max_iterations = 10
@@ -155,7 +155,7 @@ async def _handle_message(message: cl.Message) -> None:
             **_THINKING_EXTRAS,
         )
 
-        assistant_message = response.choices[0].message
+        assistant_message = response.choices[0].message  # type: ignore[union-attr]
 
         reasoning = getattr(assistant_message, "reasoning_content", None)
         if reasoning:
@@ -180,7 +180,7 @@ async def _handle_message(message: cl.Message) -> None:
                         result = await session.call_tool(name, arguments)
 
                         result_text = "\n".join(
-                            [str(b.text) for b in result.content if hasattr(b, "text")]
+                            [b.text for b in result.content if isinstance(b, mcp.types.TextContent)]
                         )
                         step.output = result_text
 

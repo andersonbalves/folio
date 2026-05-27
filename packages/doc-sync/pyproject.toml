@@ -5,6 +5,7 @@ requires-python = ">=3.14"
 dependencies = [
     "dynaconf>=3.2.13",
     "folio-core",
+    "folio-embeddings",
     "pyyaml>=6.0.3",
     "structlog>=25.5.0",
     "sqlite-vec>=0.1.9",
@@ -15,6 +16,7 @@ folio-sync = "folio_sync.shell.cli:main"
 
 [tool.uv.sources]
 folio-core = { workspace = true }
+folio-embeddings = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

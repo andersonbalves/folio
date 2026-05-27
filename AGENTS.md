@@ -1,20 +1,21 @@
 # Folio
 
-Knowledge management system (RAG-ready): indexes local Markdown documents into a SQLite database with full-text search (BM25 via FTS5), exposing search tools via the Model Context Protocol (MCP). The whole project is distributed as a standalone Docker image.
+Knowledge management system (RAG-ready): indexes local Markdown documents into a SQLite database with full-text search (BM25 via FTS5) and optional vector search (sqlite-vec), exposing search tools via the Model Context Protocol (MCP). The whole project is distributed as a standalone Docker image.
 
 ## Packages
 
 | Package | Path | Role |
 |---------|------|------|
-| `folio-core` | `packages/core/` | Shared domain types and SQL helpers. Pure Python, no I/O. Only `models.py` and `sql.py`. |
-| `folio-sync` | `packages/doc-sync/` | Local directory indexer. Has own `core/` (parser, hasher, categorizer, indexer) and `shell/` (db, cli). Reads from local `data/` and upserts to SQLite. |
-| `folio-mcp` | `packages/mcp-server/` | MCP server exposing `list_topics`, `search_docs`, `get_document`. Has own `core/` (queries, mappers) and `shell/` (db, tools, handler) running synchronous SQLite queries. |
+| `folio-core` | `packages/core/` | Shared domain types and SQL helpers. Pure Python, no I/O. `models.py`, `sql.py`, `splitter.py` (Markdown chunking). |
+| `folio-embeddings` | `packages/embeddings/` | Shared embedding protocol and providers (`none`, `ollama`, `fastembed`, `openai`). Pure Python, no I/O. |
+| `folio-sync` | `packages/doc-sync/` | Local directory indexer. Has own `core/` (parser, hasher, categorizer, indexer) and `shell/` (db, cli). Reads from local `data/`, chunks documents, upserts to SQLite (FTS5 + optional vec0 embeddings). |
+| `folio-mcp` | `packages/mcp-server/` | MCP server exposing `list_topics`, `lexical_search`, `semantic_search`, `hybrid_search`, `get_document`. Has own `core/` (rrf ranking) and `shell/` (db, tools, handler) running synchronous SQLite queries. |
 | `folio-chat` | `packages/chat/` | Chainlit web UI and CLI REPL for local testing. |
 
 ## Stack
 
 - Python 3.14+, `uv` workspace monorepo (`pyproject.toml` at root + per package)
-- SQLite with `sqlite-vec` extension and FTS5 full-text search
+- SQLite with `sqlite-vec` extension (vec0 virtual tables) and FTS5 full-text search
 - Docker (multi-stage builds for the standalone image)
 - Chainlit for conversational web UI
 - MCP protocol (via `fastmcp`) for tool exposure to AI assistants
@@ -44,11 +45,11 @@ Each package (except `folio-core`) has explicit `core/` and `shell/` sub-package
 - **`package/shell/`** — orchestrates I/O. Imports from own `core/` and `folio-core`. Calls core with concrete values, applies results to DB/S3/network.
 
 **Import rules:**
-- `*.core.*` may import from `folio_core` only.
-- `*.shell.*` may import from `*.core.*` and `folio_core`.
+- `*.core.*` may import from `folio_core` and `folio_embeddings` only.
+- `*.shell.*` may import from `*.core.*`, `folio_core`, and `folio_embeddings`.
 - `folio_chat.*` may import from `folio_mcp` as a library client.
 - `*.core.*` must **never** import from `*.shell.*`.
-- `folio-core` must **never** import from any other workspace package.
+- `folio-core` and `folio-embeddings` must **never** import from any other workspace package.
 
 ## Conventions
 

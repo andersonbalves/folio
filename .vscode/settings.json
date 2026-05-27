@@ -14,6 +14,8 @@
     "**/dist": true,
     "**/.coverage": true,
     "**/.python-version": true,
-    "**/.qlty": true
+    "**/.qlty": true,
+    "**/*:Zone.Identifier": true,
+    "**/.gemini": true,
   }
 }
