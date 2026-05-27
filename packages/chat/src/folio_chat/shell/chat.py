@@ -145,7 +145,7 @@ class OllamaAgent:
 
             for tool_call in assistant_msg.tool_calls:
                 name = tool_call.function.name
-                args = tool_call.function.arguments or {}
+                args: dict[str, Any] = dict(tool_call.function.arguments or {})
                 if self._printer.enabled:
                     self._printer.request(name, args)
                 else:
