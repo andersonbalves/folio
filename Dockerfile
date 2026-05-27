@@ -24,8 +24,8 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 WORKDIR /app
 
 # Copiar apenas dependências e código necessários
-COPY --from=builder /app/.venv /app/.venv
-COPY --from=builder /app/folio.sqlite /app/folio.sqlite
+COPY --chown=folio:folio --from=builder /app/.venv /app/.venv
+COPY --chown=folio:folio --from=builder /app/folio.sqlite /app/folio.sqlite
 COPY pyproject.toml uv.lock ./
 COPY packages/core ./packages/core
 COPY packages/mcp-server ./packages/mcp-server

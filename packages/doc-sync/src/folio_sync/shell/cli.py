@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import sys
 from pathlib import Path
 
 import structlog
@@ -87,20 +88,27 @@ def main():
     parser.add_argument("db_path", type=Path, help="Caminho do arquivo SQLite de destino")
     args = parser.parse_args()
 
-    if not args.data_dir.exists():
-        logger.error("cli.data_dir_not_found", path=str(args.data_dir))
-        return
+    data_dir = args.data_dir
+    db_path = args.db_path
+
+    if not data_dir.exists() or not data_dir.is_dir():
+        logger.error("cli.data_dir_not_found", data_dir=str(data_dir))
+        sys.exit(1)
 
     # Inicializa o banco (Auto-inicialização do Schema)
-    init_db(args.db_path)
+    init_db(db_path)
 
     stats = {"scanned": 0, "indexed": 0, "skipped": 0}
 
-    with connect_db(args.db_path) as conn:
-        for md_file in args.data_dir.rglob("*.md"):
+    with connect_db(db_path) as conn:
+        for md_file in data_dir.rglob("*.md"):
             stats["scanned"] += 1
-            rel_path = str(md_file.relative_to(args.data_dir))
-            raw_content = md_file.read_text(encoding="utf-8")
+            rel_path = str(md_file.relative_to(data_dir))
+            try:
+                raw_content = md_file.read_text(encoding="utf-8", errors="replace")
+            except Exception as e:
+                logger.error("file.read_error", path=rel_path, error=str(e))
+                continue
 
             changed = upsert_document(conn, rel_path, raw_content)
             if changed:

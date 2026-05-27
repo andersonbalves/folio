@@ -48,7 +48,30 @@ make index
 
 ## Uso com Claude Desktop
 
-Adicione ao seu `claude_desktop_config.json`:
+### Via imagem Docker (recomendado)
+
+1. Popule `data/` com seus documentos Markdown e construa a imagem:
+
+```bash
+make build-image
+```
+
+2. Adicione ao seu `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "folio": {
+      "command": "docker",
+      "args": ["run", "--rm", "-i", "folio-mcp"]
+    }
+  }
+}
+```
+
+O banco SQLite fica embutido na imagem — nenhum volume externo necessário. Para atualizar os documentos, reindexe e rebuilde a imagem.
+
+### Via uv (desenvolvimento local)
 
 ```json
 {

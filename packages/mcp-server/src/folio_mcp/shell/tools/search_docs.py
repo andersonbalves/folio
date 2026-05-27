@@ -3,7 +3,7 @@
 from folio_core.models import SearchDocsResult
 
 from folio_mcp.core.mappers import map_search_rows
-from folio_mcp.core.queries import search_docs_sql
+from folio_mcp.core.queries import sanitize_fts5_query, search_docs_sql
 from folio_mcp.shell.config import settings
 from folio_mcp.shell.db import conn
 
@@ -23,8 +23,9 @@ def search_docs(query: str, limit: int = 10) -> SearchDocsResult:
         max_fragments=settings.search.snippet_max_fragments,
         max_words=settings.search.snippet_max_words,
     )
+    safe_query = sanitize_fts5_query(query)
     with conn() as c:
         cur = c.cursor()
-        cur.execute(sql, (query, limit))
+        cur.execute(sql, (safe_query, limit))
         rows = cur.fetchall()
     return map_search_rows([dict(r) for r in rows], query)

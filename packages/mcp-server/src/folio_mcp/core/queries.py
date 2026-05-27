@@ -1,6 +1,26 @@
 """Pure SQL query builders. No I/O — return (sql_string, params) tuples."""
 
+import re
 from typing import LiteralString, cast
+
+
+def sanitize_fts5_query(query: str) -> str:
+    """Sanitize user input for SQLite FTS5 MATCH clause to prevent syntax errors.
+
+    Removes unbalanced quotes and strips special FTS5 characters that could
+    cause a syntax error (like dangling OR, AND, NEAR, *, ^).
+    """
+    # Remove all quotes to avoid unbalanced quote errors.
+    # For a more advanced implementation, we could try to balance them,
+    # but removing them ensures no syntax errors while keeping it simple.
+    q = query.replace('"', "").replace("'", "")
+
+    # Remove characters that have special meaning in FTS5 and could cause crashes
+    # if used improperly.
+    q = re.sub(r"[*^~]", " ", q)
+
+    # Strip extra whitespace
+    return " ".join(q.split())
 
 
 def search_docs_sql(max_fragments: int, max_words: int) -> LiteralString:

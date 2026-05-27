@@ -4,6 +4,7 @@ import os
 import sqlite3
 from collections.abc import Generator
 from contextlib import contextmanager
+from pathlib import Path
 
 import sqlite_vec
 import structlog
@@ -17,6 +18,9 @@ DB_PATH = os.getenv("FOLIO_MCP_DB_PATH", "folio.sqlite")
 @contextmanager
 def conn() -> Generator[sqlite3.Connection]:
     """Yield a connection to the SQLite database with sqlite-vec enabled."""
+    if not Path(DB_PATH).exists():
+        raise FileNotFoundError(f"Database file not found: {DB_PATH}")
+
     connection = sqlite3.connect(DB_PATH)
     connection.enable_load_extension(True)
     sqlite_vec.load(connection)
