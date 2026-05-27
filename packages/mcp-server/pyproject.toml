@@ -11,7 +11,7 @@ dependencies = [
 ]
 
 [project.scripts]
-folio-mcp = "folio_mcp.handler:main"
+folio-mcp = "folio_mcp.shell.handler:main"
 
 [tool.uv.sources]
 folio-core = { workspace = true }

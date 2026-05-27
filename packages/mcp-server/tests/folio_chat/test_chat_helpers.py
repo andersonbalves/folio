@@ -1,0 +1,293 @@
+"""Tests for pure helper functions in packages/chat/src/folio_chat/shell/chat.py."""
+
+import importlib.util
+import sys
+from pathlib import Path
+from unittest.mock import MagicMock
+
+import mcp.types
+
+# ollama is not installed in the workspace .venv;
+# stub it so chat.py can be imported without the runtime env.
+sys.modules.setdefault("ollama", MagicMock())
+
+# Load folio_chat/shell/chat.py as a module without executing main()
+_spec = importlib.util.spec_from_file_location(
+    "chat",
+    Path(__file__).parents[4] / "packages" / "chat" / "src" / "folio_chat" / "shell" / "chat.py",
+)
+_mod = importlib.util.module_from_spec(_spec)  # type: ignore[arg-type]
+_spec.loader.exec_module(_mod)  # type: ignore[union-attr]
+
+mcp_tool_to_ollama = _mod.mcp_tool_to_ollama
+extract_result_text = _mod.extract_result_text
+DebugPrinter = _mod.DebugPrinter
+OllamaAgent = _mod.OllamaAgent
+
+
+def _make_tool(name: str, description: str, schema: dict) -> mcp.types.Tool:
+    return mcp.types.Tool(name=name, description=description, inputSchema=schema)
+
+
+class TestMcpToolToOllama:
+    def test_basic_conversion(self):
+        tool = _make_tool(
+            "search_docs",
+            "Search documents by terms.",
+            {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]},
+        )
+        result = mcp_tool_to_ollama(tool)
+        assert result["type"] == "function"
+        assert result["function"]["name"] == "search_docs"
+        assert result["function"]["description"] == "Search documents by terms."
+        assert result["function"]["parameters"]["properties"]["query"]["type"] == "string"
+
+    def test_none_description_becomes_empty_string(self):
+        tool = mcp.types.Tool(
+            name="list_topics",
+            description=None,
+            inputSchema={"type": "object", "properties": {}},
+        )
+        result = mcp_tool_to_ollama(tool)
+        assert result["function"]["description"] == ""
+
+    def test_input_schema_passed_as_parameters(self):
+        schema = {
+            "type": "object",
+            "properties": {"path": {"type": "string"}},
+            "required": ["path"],
+        }
+        tool = _make_tool("get_document", "Get document.", schema)
+        result = mcp_tool_to_ollama(tool)
+        assert result["function"]["parameters"] == schema
+
+
+class TestExtractResultText:
+    def test_single_text_block(self):
+        from fastmcp.client.client import CallToolResult
+
+        result = CallToolResult(
+            content=[mcp.types.TextContent(type="text", text="hello world")],
+            structured_content=None,
+            meta=None,
+        )
+        assert extract_result_text(result) == "hello world"
+
+    def test_multiple_text_blocks_joined(self):
+        from fastmcp.client.client import CallToolResult
+
+        result = CallToolResult(
+            content=[
+                mcp.types.TextContent(type="text", text="line one"),
+                mcp.types.TextContent(type="text", text="line two"),
+            ],
+            structured_content=None,
+            meta=None,
+        )
+        assert extract_result_text(result) == "line one\nline two"
+
+    def test_empty_content_returns_fallback(self):
+        from fastmcp.client.client import CallToolResult
+
+        result = CallToolResult(content=[], structured_content=None, meta=None)
+        assert extract_result_text(result) == "(no text result)"
+
+    def test_non_text_blocks_skipped(self):
+        from unittest.mock import MagicMock
+
+        from fastmcp.client.client import CallToolResult
+
+        non_text = MagicMock()
+        non_text.type = "image"
+        result = CallToolResult(
+            content=[non_text, mcp.types.TextContent(type="text", text="actual text")],
+            structured_content=None,
+            meta=None,
+        )
+        assert extract_result_text(result) == "actual text"
+
+
+class TestDebugPrinter:
+    def test_disabled_thinking_produces_no_output(self, capsys):
+        printer = DebugPrinter(enabled=False)
+        printer.thinking("some reasoning")
+        assert capsys.readouterr().out == ""
+
+    def test_disabled_request_produces_no_output(self, capsys):
+        printer = DebugPrinter(enabled=False)
+        printer.request("search_docs", {"query": "k8s"})
+        assert capsys.readouterr().out == ""
+
+    def test_disabled_response_produces_no_output(self, capsys):
+        printer = DebugPrinter(enabled=False)
+        printer.response("search_docs", "some result")
+        assert capsys.readouterr().out == ""
+
+    def test_enabled_false_property(self):
+        printer = DebugPrinter(enabled=False)
+        assert printer.enabled is False
+
+    def test_enabled_true_property(self):
+        printer = DebugPrinter(enabled=True)
+        assert printer.enabled is True
+
+    def test_enabled_thinking_contains_text(self, capsys):
+        printer = DebugPrinter(enabled=True)
+        printer.thinking("Let me search that.")
+        out = capsys.readouterr().out
+        assert "thinking" in out
+        assert "Let me search that." in out
+
+    def test_enabled_request_contains_name_and_args_json(self, capsys):
+        printer = DebugPrinter(enabled=True)
+        printer.request("search_docs", {"query": "kubernetes"})
+        out = capsys.readouterr().out
+        assert "REQUEST" in out
+        assert "search_docs" in out
+        assert '"kubernetes"' in out
+
+    def test_enabled_response_contains_name_and_text(self, capsys):
+        printer = DebugPrinter(enabled=True)
+        printer.response("search_docs", "Full result text here.")
+        out = capsys.readouterr().out
+        assert "RESPONSE" in out
+        assert "search_docs" in out
+        assert "Full result text here." in out
+
+    def test_enabled_response_shows_char_count(self, capsys):
+        printer = DebugPrinter(enabled=True)
+        text = "x" * 42
+        printer.response("tool", text)
+        out = capsys.readouterr().out
+        assert "42" in out
+
+
+class TestOllamaAgentDebug:
+    def _make_response(self, content: str | None, tool_calls=None):
+        msg = MagicMock()
+        msg.content = content
+        msg.tool_calls = tool_calls
+        resp = MagicMock()
+        resp.message = msg
+        return resp
+
+    def test_accepts_printer_parameter(self):
+        bridge = MagicMock()
+        printer = DebugPrinter(enabled=False)
+        agent = OllamaAgent("model", bridge, [], printer=printer)
+        assert agent._printer is printer
+
+    def test_none_printer_defaults_to_disabled(self):
+        bridge = MagicMock()
+        agent = OllamaAgent("model", bridge, [])
+        assert isinstance(agent._printer, DebugPrinter)
+        assert agent._printer.enabled is False
+
+    def test_thinking_called_when_content_before_tool_calls(self):
+        import asyncio
+        from unittest.mock import AsyncMock, patch
+
+        bridge = MagicMock()
+        bridge.call_tool = AsyncMock(return_value="tool result")
+        mock_printer = MagicMock()
+        mock_printer.enabled = True
+
+        tool_call = MagicMock()
+        tool_call.function.name = "search_docs"
+        tool_call.function.arguments = {"query": "k8s"}
+
+        responses = iter(
+            [
+                self._make_response("Let me look that up.", [tool_call]),
+                self._make_response("Here is the answer.", None),
+            ]
+        )
+
+        async def fake_to_thread(fn, *args, **kwargs):
+            return next(responses)
+
+        agent = OllamaAgent("model", bridge, [], printer=mock_printer)
+        with patch("asyncio.to_thread", side_effect=fake_to_thread):
+            asyncio.run(agent.run("find k8s docs"))
+
+        mock_printer.thinking.assert_called_once_with("Let me look that up.")
+        mock_printer.request.assert_called_once_with("search_docs", {"query": "k8s"})
+        mock_printer.response.assert_called_once_with("search_docs", "tool result")
+
+    def test_thinking_not_called_when_no_content(self):
+        import asyncio
+        from unittest.mock import AsyncMock, patch
+
+        bridge = MagicMock()
+        bridge.call_tool = AsyncMock(return_value="result")
+        mock_printer = MagicMock()
+        mock_printer.enabled = True
+
+        tool_call = MagicMock()
+        tool_call.function.name = "list_topics"
+        tool_call.function.arguments = {}
+
+        responses = iter(
+            [
+                self._make_response(None, [tool_call]),
+                self._make_response("Done.", None),
+            ]
+        )
+
+        async def fake_to_thread(fn, *args, **kwargs):
+            return next(responses)
+
+        agent = OllamaAgent("model", bridge, [], printer=mock_printer)
+        with patch("asyncio.to_thread", side_effect=fake_to_thread):
+            asyncio.run(agent.run("list topics"))
+
+        mock_printer.thinking.assert_not_called()
+        mock_printer.request.assert_called_once_with("list_topics", {})
+        mock_printer.response.assert_called_once_with("list_topics", "result")
+
+    def test_legacy_print_path_when_printer_disabled(self, capsys):
+        import asyncio
+        from unittest.mock import AsyncMock, patch
+
+        bridge = MagicMock()
+        bridge.call_tool = AsyncMock(return_value="tool result here")
+
+        tool_call = MagicMock()
+        tool_call.function.name = "search_docs"
+        tool_call.function.arguments = {"query": "test"}
+
+        responses = iter(
+            [
+                self._make_response(None, [tool_call]),
+                self._make_response("Final answer.", None),
+            ]
+        )
+
+        async def fake_to_thread(fn, *args, **kwargs):
+            return next(responses)
+
+        # No printer passed → defaults to DebugPrinter(enabled=False) → legacy path
+        agent = OllamaAgent("model", bridge, [])
+        with patch("asyncio.to_thread", side_effect=fake_to_thread):
+            asyncio.run(agent.run("find docs"))
+
+        out = capsys.readouterr().out
+        assert "[tool: search_docs" in out
+        assert "tool result here" in out
+
+
+class TestCLI:
+    def test_default_system_is_minimal(self):
+        assert "always use" not in _mod.DEFAULT_SYSTEM
+        assert "Recommended flow" not in _mod.DEFAULT_SYSTEM
+        assert "helpful assistant" in _mod.DEFAULT_SYSTEM
+
+    def test_debug_flag_defaults_to_false(self, monkeypatch):
+        monkeypatch.setattr("sys.argv", ["chat.py"])
+        args = _mod.parse_args()
+        assert args.debug is False
+
+    def test_debug_flag_set_true(self, monkeypatch):
+        monkeypatch.setattr("sys.argv", ["chat.py", "--debug"])
+        args = _mod.parse_args()
+        assert args.debug is True

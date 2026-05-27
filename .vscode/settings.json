@@ -9,5 +9,12 @@
     "**/__pycache__": true,
     "**/*.pyc": true,
     "**/.pytest_cache": true,
+    "**/.mypy_cache": true,
+    "**/.ruff_cache": true,
+    "**/dist": true,
+    "**/.coverage": true,
+    "**/.python-version": true,
+    "**/.gemini": true,
+    "**/.antigravitycli": true,
   }
 }

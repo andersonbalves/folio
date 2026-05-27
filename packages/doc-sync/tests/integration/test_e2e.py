@@ -9,8 +9,8 @@ pytestmark = pytest.mark.integration
 
 
 async def test_full_sync_indexes_s3_docs():
-    from folio_sync.db import close_pool, conn
-    from folio_sync.indexer import full_sync
+    from folio_sync.shell.db import close_pool, conn
+    from folio_sync.shell.indexer import full_sync
 
     stats = await full_sync()
     await close_pool()
@@ -29,8 +29,8 @@ async def test_full_sync_indexes_s3_docs():
 
 
 async def test_mcp_search_returns_results():
-    from folio_mcp.db import close_pool
-    from folio_mcp.tools.search_docs import search_docs
+    from folio_mcp.shell.db import close_pool
+    from folio_mcp.shell.tools.search_docs import search_docs
 
     result = await search_docs("pods scheduling")
     await close_pool()

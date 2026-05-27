@@ -7,11 +7,12 @@ dependencies = [
     "dynaconf>=3.2.13",
     "folio-core",
     "psycopg[binary,pool]>=3.3.4",
+    "pyyaml>=6.0.3",
     "structlog>=25.5.0",
 ]
 
 [project.scripts]
-folio-sync = "folio_sync.handler:main"
+folio-sync = "folio_sync.shell.handler:main"
 
 [tool.uv.sources]
 folio-core = { workspace = true }
