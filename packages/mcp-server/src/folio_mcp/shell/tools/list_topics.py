@@ -25,20 +25,20 @@ def list_topics(category: str | None = None) -> ListTopicsResult:
             "FROM topics ORDER BY category, sort_order, title"
         )
         params = ()
-        
+
     with conn() as c:
         cur = c.cursor()
         cur.execute(sql, params)
         rows = cur.fetchall()
-        
+
     topics = [
         Topic(
-            slug=r[0],
-            title=r[1],
-            description=r[2],
-            category=r[3],
-            doc_path=r[4],
-            sort_order=r[5],
+            slug=r["slug"],
+            title=r["title"],
+            description=r["description"],
+            category=r["category"],
+            doc_path=r["doc_path"],
+            sort_order=r["sort_order"],
         )
         for r in rows
     ]

@@ -18,7 +18,13 @@ def get_document(path: str) -> GetDocumentResult | None:
         cur = c.cursor()
         cur.execute(sql, (path,))
         row = cur.fetchone()
-        
+
     if row is None:
         return None
-    return GetDocumentResult(path=row[0], title=row[1], content=row[2], metadata=row[3])
+    import json
+    return GetDocumentResult(
+        path=row["path"],
+        title=row["title"],
+        content=row["content"],
+        metadata=json.loads(row["metadata"]) if isinstance(row["metadata"], str) else row["metadata"]
+    )

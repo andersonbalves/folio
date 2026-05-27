@@ -10,7 +10,7 @@ from folio_mcp.shell.db import conn
 
 def sanitize_fts5_query(query: str) -> str:
     """Sanitize user input for SQLite FTS5 MATCH clause to prevent syntax errors."""
-    q = re.sub(r"[/*\'()~^:+-]", " ", query)
+    q = re.sub(r"[/*\"\'()~^:+-]", " ", query)
     terms = [f'"{term}"' for term in q.split() if term]
     return " ".join(terms)
 
@@ -27,6 +27,7 @@ def search_docs(query: str, limit: int = 10) -> SearchDocsResult:
     """
     limit = min(max(limit, 1), settings.search.max_limit)
     safe_query = sanitize_fts5_query(query)
+
     if not safe_query:
         return SearchDocsResult(matches=[], query=query)
 
@@ -40,11 +41,19 @@ def search_docs(query: str, limit: int = 10) -> SearchDocsResult:
         ORDER BY rank DESC
         LIMIT ?
     """
-    
+
     with conn() as c:
         cur = c.cursor()
         cur.execute(sql, (safe_query, limit))
         rows = cur.fetchall()
-        
-    matches = [SearchMatch(path=r[0], title=r[1], rank=float(r[2]), snippet=r[3]) for r in rows]
+
+    matches = [
+        SearchMatch(
+            path=r["path"],
+            title=r["title"],
+            rank=float(r["rank"]),
+            snippet=r["snippet"],
+        )
+        for r in rows
+    ]
     return SearchDocsResult(matches=matches, query=query)
