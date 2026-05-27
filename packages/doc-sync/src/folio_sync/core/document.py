@@ -1,9 +1,27 @@
-"""Metadata inference from path and front matter. Pure, without I/O.
+"""Document parsing, hashing, and metadata inference. Pure, without I/O."""
 
-Designed to work with docs WITHOUT complete front matter (e.g. Kubernetes docs).
-"""
-
+import hashlib
 from pathlib import Path
+
+import yaml
+from folio_core.models import ParsedMarkdown
+
+
+def content_hash(raw: str) -> str:
+    """Return the SHA-256 hex digest of the given raw string content."""
+    return hashlib.sha256(raw.encode()).hexdigest()
+
+
+def parse_markdown(raw: str) -> ParsedMarkdown:
+    """Parse raw Markdown content, extracting YAML front matter and body."""
+    if not raw or not raw.startswith("---\n"):
+        return ParsedMarkdown(front_matter={}, body=raw or "")
+    try:
+        _, fm_yaml, body = raw.split("---\n", 2)
+        fm = yaml.safe_load(fm_yaml) or {}
+        return ParsedMarkdown(front_matter=fm, body=body.lstrip())
+    except ValueError, yaml.YAMLError:
+        return ParsedMarkdown(front_matter={}, body=raw)
 
 
 def infer_category(path: str) -> str:
