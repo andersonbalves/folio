@@ -40,7 +40,9 @@ def upsert_document(conn, path: str, raw: str) -> bool:
             doc["title"],
             doc["content"],
             doc["content_hash"],
-            json.dumps(doc.get("metadata", {})),
+            doc.get("metadata", "{}")
+            if isinstance(doc.get("metadata"), str)
+            else json.dumps(doc.get("metadata", {})),
         ),
     )
 

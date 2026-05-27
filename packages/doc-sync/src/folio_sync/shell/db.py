@@ -36,6 +36,9 @@ def init_db(db_path: Path):
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_topics_category ON topics (category, sort_order)"
+        )
         conn.execute("""
             CREATE VIRTUAL TABLE IF NOT EXISTS documents_fts USING fts5(
                 path UNINDEXED,

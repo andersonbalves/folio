@@ -10,17 +10,9 @@ def sanitize_fts5_query(query: str) -> str:
     Removes unbalanced quotes and strips special FTS5 characters that could
     cause a syntax error (like dangling OR, AND, NEAR, *, ^).
     """
-    # Remove all quotes to avoid unbalanced quote errors.
-    # For a more advanced implementation, we could try to balance them,
-    # but removing them ensures no syntax errors while keeping it simple.
-    q = query.replace('"', "").replace("'", "")
-
-    # Remove characters that have special meaning in FTS5 and could cause crashes
-    # if used improperly.
-    q = re.sub(r"[*^~]", " ", q)
-
-    # Strip extra whitespace
-    return " ".join(q.split())
+    q = re.sub(r"[/*\"\'()~^:+-]", " ", query)
+    terms = [f'"{term}"' for term in q.split() if term]
+    return " ".join(terms)
 
 
 def search_docs_sql(max_fragments: int, max_words: int) -> LiteralString:
@@ -30,11 +22,11 @@ def search_docs_sql(max_fragments: int, max_words: int) -> LiteralString:
         """
         SELECT
             path, title,
-            bm25(documents_fts) AS rank,
-            snippet(documents_fts, 2, '<mark>', '</mark>', '...', 64) AS snippet
+            -bm25(documents_fts) AS rank,
+            snippet(documents_fts, -1, '<mark>', '</mark>', '...', 64) AS snippet
         FROM documents_fts
         WHERE documents_fts MATCH ?
-        ORDER BY rank
+        ORDER BY rank DESC
         LIMIT ?
         """,
     )

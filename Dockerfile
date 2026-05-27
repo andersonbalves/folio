@@ -23,14 +23,15 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 WORKDIR /app
 
+RUN groupadd -r folio && useradd -r -g folio folio
+
 # Copiar apenas dependências e código necessários
 COPY --chown=folio:folio --from=builder /app/.venv /app/.venv
 COPY --chown=folio:folio --from=builder /app/folio.sqlite /app/folio.sqlite
-COPY pyproject.toml uv.lock settings.yaml ./
-COPY packages/core ./packages/core
-COPY packages/mcp-server ./packages/mcp-server
+COPY --chown=folio:folio pyproject.toml uv.lock settings.yaml ./
+COPY --chown=folio:folio packages/core ./packages/core
+COPY --chown=folio:folio packages/mcp-server ./packages/mcp-server
 
-RUN groupadd -r folio && useradd -r -g folio folio
 USER folio
 
 # Garantir que usamos o ambiente virtual criado
