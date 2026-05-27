@@ -17,6 +17,7 @@ logger = structlog.get_logger()
 def init_db(db_path: Path):
     """Inicializa o schema do SQLite."""
     logger.info("db.init", path=str(db_path))
+    db_path.parent.mkdir(parents=True, exist_ok=True)
     with connect_db(db_path) as conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS documents (
@@ -57,11 +58,11 @@ def init_db(db_path: Path):
 def connect_db(db_path: Path) -> Generator[sqlite3.Connection]:
     """Conecta ao banco e carrega a extensão sqlite-vec."""
     conn = sqlite3.connect(db_path)
-    conn.enable_load_extension(True)
-    sqlite_vec.load(conn)
-    conn.enable_load_extension(False)
-    conn.row_factory = sqlite3.Row
     try:
+        conn.enable_load_extension(True)
+        sqlite_vec.load(conn)
+        conn.enable_load_extension(False)
+        conn.row_factory = sqlite3.Row
         yield conn
     finally:
         conn.close()
@@ -116,6 +117,9 @@ class SQLiteDocumentRepository:
         """,
             (doc["path"], doc["title"], doc["content"]),
         )
+
+        # Sincronizar topics. Remove antigo para evitar órfãos/duplicados se o slug mudou ou foi removido.
+        cur.execute("DELETE FROM topics WHERE doc_path = ?", (doc["path"],))
 
         # Upsert em topics
         if doc.get("slug"):
