@@ -1,5 +1,5 @@
-.PHONY: up down clean ps logs migrate k8s-docs seed sync-full \
-        build deploy-local invoke-mcp serve serve-http chat worker \
+.PHONY: up down clean ps logs migrate seed sync-full k8s-docs \
+        serve serve-http chat chat-web \
         test lint typecheck format check bootstrap
 
 NAME := folio
@@ -13,7 +13,7 @@ up:
 	uv run localstack start -d
 	@echo "Aguardando LocalStack..."
 	uv run localstack wait -t 60
-	@bash docker/localstack-init/01-bootstrap-aws.sh
+	@bash infra/docker/localstack-init/01-bootstrap-aws.sh
 	$(MAKE) seed sync-full
 	@echo "Stack pronta."
 
@@ -35,7 +35,7 @@ logs:
 
 # === Banco ===
 migrate:
-	uv run python scripts/apply_migrations.py
+	uv run python infra/scripts/apply_migrations.py
 
 # === Seed ===
 k8s-docs:
@@ -44,54 +44,38 @@ k8s-docs:
 	  https://github.com/kubernetes/website.git _k8s-clone
 	cd _k8s-clone && git sparse-checkout set \
 	  content/en/docs/concepts content/en/docs/tasks
-	mkdir -p seed/kubernetes-docs
-	cp -r _k8s-clone/content/en/docs/concepts seed/kubernetes-docs/
-	cp -r _k8s-clone/content/en/docs/tasks seed/kubernetes-docs/
+	mkdir -p infra/seed/kubernetes-docs
+	cp -r _k8s-clone/content/en/docs/concepts infra/seed/kubernetes-docs/
+	cp -r _k8s-clone/content/en/docs/tasks infra/seed/kubernetes-docs/
 	rm -rf _k8s-clone
-	@echo "Docs: $$(find seed/kubernetes-docs -name '*.md' | wc -l) arquivos"
+	@echo "Docs: $$(find infra/seed/kubernetes-docs -name '*.md' | wc -l) arquivos"
 
 seed:
-	uv run python scripts/seed_localstack.py
+	uv run python infra/scripts/seed_localstack.py
 	@echo "S3: $$(uv run awslocal s3 ls s3://$(NAME)-docs --recursive | wc -l) objetos"
 
 # === Sync ===
 sync-full:
-	uv run python scripts/run_full_sync.py
+	uv run python infra/scripts/run_full_sync.py
 
-# === Lambda ===
-build:
-	bash scripts/build_lambdas.sh
-
-deploy-local:
-	bash scripts/deploy_lambdas.sh
-
-invoke-mcp:
-	@uv run awslocal lambda invoke \
-	  --function-name $(NAME)-mcp \
-	  --payload '$(PAYLOAD)' \
-	  /tmp/mcp-response.json > /dev/null && cat /tmp/mcp-response.json | uv run python -m json.tool
-	# Uso: make invoke-mcp PAYLOAD='{"tool":"list_topics","arguments":{}}'
-
-# === Dev local (sem Lambda) ===
+# === Dev local ===
 serve:
 	uv run $(NAME)-mcp
 
 serve-http:
-	uv run fastmcp run packages/mcp-server/src/folio_mcp/handler.py:mcp --transport sse --port 8001
+	uv run fastmcp run packages/mcp-server/src/folio_mcp/shell/handler.py:mcp \
+	  --transport sse --port 8001
 
 chat:
-	uv run scripts/chat.py $(ARGS)
+	uv run packages/chat/src/folio_chat/shell/chat.py $(ARGS)
 
 chat-web:
 	@echo "Requer MCP server rodando: make serve-http (em outro terminal)"
-	uv run chainlit run scripts/web_chat.py -w
+	uv run chainlit run packages/chat/src/folio_chat/shell/app.py -w
 
 start-localstack:
 	uv run localstack start -d
 	uv run localstack wait -t 60
-
-deploy-mcp:
-	bash scripts/deploy_mcp_lwa.sh
 
 # === Quality ===
 test:
@@ -113,9 +97,11 @@ check: lint typecheck test
 	@echo "Tudo verde."
 
 # === Bootstrap completo ===
-bootstrap: up migrate k8s-docs seed sync-full build deploy-local deploy-mcp
+bootstrap: up migrate k8s-docs seed sync-full
 	@echo ""
 	@echo "Ambiente pronto."
 	@echo "  Modo stdio   : make serve"
-	@echo "  Invoke Lambda: make invoke-mcp PAYLOAD='{...}'"
+	@echo "  HTTP SSE     : make serve-http"
+	@echo "  Chat CLI     : make chat"
+	@echo "  Chat Web     : make chat-web"
 	@echo "  Testes       : make check"
