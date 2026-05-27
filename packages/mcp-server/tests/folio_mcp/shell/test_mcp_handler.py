@@ -8,5 +8,8 @@ async def test_mcp_instance():
     tools = await mcp.list_tools()
     tool_names = [t.name for t in tools]
     assert "list_topics" in tool_names
-    assert "search_docs" in tool_names
+    assert "lexical_search" in tool_names
+    assert "semantic_search" in tool_names
+    assert "hybrid_search" in tool_names
     assert "get_document" in tool_names
+    assert "search_docs" not in tool_names  # renamed
