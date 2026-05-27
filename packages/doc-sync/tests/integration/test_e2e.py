@@ -29,8 +29,8 @@ async def test_full_sync_indexes_s3_docs():
 
 
 async def test_mcp_search_returns_results():
-    from folio_mcp.db import close_pool
-    from folio_mcp.tools.search_docs import search_docs
+    from folio_mcp.shell.db import close_pool
+    from folio_mcp.shell.tools.search_docs import search_docs
 
     result = await search_docs("pods scheduling")
     await close_pool()

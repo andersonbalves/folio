@@ -25,21 +25,30 @@ def search_docs_sql(max_fragments: int, max_words: int) -> LiteralString:
     )
 
 
-def list_topics_sql(category: str | None) -> tuple[str, tuple]:
+def list_topics_sql(category: str | None) -> tuple[LiteralString, tuple]:
     """Return (sql, params) for listing topics, optionally filtered by category."""
     if category:
         return (
-            "SELECT slug, title, description, category, doc_path, sort_order"
-            " FROM topics WHERE category = %s ORDER BY category, sort_order, title",
+            cast(
+                LiteralString,
+                "SELECT slug, title, description, category, doc_path, sort_order"
+                " FROM topics WHERE category = %s ORDER BY category, sort_order, title",
+            ),
             (category,),
         )
     return (
-        "SELECT slug, title, description, category, doc_path, sort_order"
-        " FROM topics ORDER BY category, sort_order, title",
+        cast(
+            LiteralString,
+            "SELECT slug, title, description, category, doc_path, sort_order"
+            " FROM topics ORDER BY category, sort_order, title",
+        ),
         (),
     )
 
 
-def get_document_sql() -> str:
+def get_document_sql() -> LiteralString:
     """Return SQL for fetching a single document by path. Bind param: (path,)."""
-    return "SELECT path, title, content, metadata FROM documents WHERE path = %s"
+    return cast(
+        LiteralString,
+        "SELECT path, title, content, metadata FROM documents WHERE path = %s",
+    )
