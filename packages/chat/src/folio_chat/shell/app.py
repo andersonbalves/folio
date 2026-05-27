@@ -7,9 +7,9 @@ import os
 import sniffio
 
 # Monkey-patch sniffio to fix NoEventLoopError caused by nest_asyncio in Python 3.14
-sniffio.current_async_library = lambda: "asyncio"
+sniffio.current_async_library = lambda: "asyncio"  # type: ignore[assignment]  # ty: ignore[invalid-assignment]
 
-import asyncio
+import asyncio  # noqa: E402
 
 # Patch asyncio.current_task to work with nest_asyncio in Python 3.14
 _c_current_task = asyncio.current_task
@@ -27,19 +27,19 @@ def _patched_current_task(loop=None):
     return getattr(asyncio.tasks, "_current_tasks", {}).get(loop)
 
 
-asyncio.current_task = _patched_current_task
-asyncio.tasks.current_task = (
+asyncio.current_task = _patched_current_task  # type: ignore[assignment]  # ty: ignore[invalid-assignment]
+asyncio.tasks.current_task = (  # type: ignore[assignment]  # ty: ignore[invalid-assignment]
     _patched_current_task  # asyncio.timeouts uses tasks.current_task directly
 )
 
-from typing import Any
+from typing import Any  # noqa: E402
 
-import chainlit as cl
-import litellm
-import mcp.types
-from dotenv import load_dotenv
-from mcp.client.session import ClientSession
-from mcp.client.sse import sse_client
+import chainlit as cl  # noqa: E402
+import litellm  # noqa: E402
+import mcp.types  # noqa: E402
+from dotenv import load_dotenv  # noqa: E402
+from mcp.client.session import ClientSession  # noqa: E402
+from mcp.client.sse import sse_client  # noqa: E402
 
 load_dotenv()
 
@@ -180,7 +180,7 @@ async def _handle_message(message: cl.Message) -> None:
                         result = await session.call_tool(name, arguments)
 
                         result_text = "\n".join(
-                            [b.text for b in result.content if hasattr(b, "text")]
+                            [str(b.text) for b in result.content if hasattr(b, "text")]
                         )
                         step.output = result_text
 

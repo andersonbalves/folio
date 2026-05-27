@@ -57,7 +57,7 @@ class DebugPrinter:
         print(f"{_GREEN}← RESPONSE{_RESET} {name} {_DIM}({len(text)} chars){_RESET}\n{text}\n")  # noqa: T201
 
 
-_PROJECT_ROOT = Path(__file__).parent.parent
+_PROJECT_ROOT = Path(__file__).parent.parent.parent.parent.parent
 
 
 def mcp_tool_to_ollama(tool: mcp.types.Tool) -> dict[str, Any]:
@@ -134,7 +134,7 @@ class OllamaAgent:
                 messages=self._messages,
                 tools=self._ollama_tools,
             )
-            assistant_msg = response.message
+            assistant_msg = response.message  # type: ignore[union-attr]  # ty: ignore[unresolved-attribute]
             self._messages.append(assistant_msg)
 
             if not assistant_msg.tool_calls:
