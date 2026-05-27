@@ -6,7 +6,7 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 WORKDIR /app
 
 # Instalar dependências (com cache)
-COPY pyproject.toml uv.lock ./
+COPY pyproject.toml uv.lock settings.yaml ./
 COPY packages/ ./packages/
 RUN uv sync --frozen --no-dev
 
@@ -26,7 +26,7 @@ WORKDIR /app
 # Copiar apenas dependências e código necessários
 COPY --chown=folio:folio --from=builder /app/.venv /app/.venv
 COPY --chown=folio:folio --from=builder /app/folio.sqlite /app/folio.sqlite
-COPY pyproject.toml uv.lock ./
+COPY pyproject.toml uv.lock settings.yaml ./
 COPY packages/core ./packages/core
 COPY packages/mcp-server ./packages/mcp-server
 

@@ -20,4 +20,4 @@ def get_document(path: str) -> GetDocumentResult | None:
         cur = c.cursor()
         cur.execute(sql, (path,))
         row = cur.fetchone()
-    return map_document_row(dict(row) if row else None)
+    return map_document_row(row)

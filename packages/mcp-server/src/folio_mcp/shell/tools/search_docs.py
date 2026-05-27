@@ -28,4 +28,4 @@ def search_docs(query: str, limit: int = 10) -> SearchDocsResult:
         cur = c.cursor()
         cur.execute(sql, (safe_query, limit))
         rows = cur.fetchall()
-    return map_search_rows([dict(r) for r in rows], query)
+    return map_search_rows(rows, query)

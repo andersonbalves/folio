@@ -20,4 +20,4 @@ def list_topics(category: str | None = None) -> ListTopicsResult:
         cur = c.cursor()
         cur.execute(sql, params)
         rows = cur.fetchall()
-    return map_topic_rows([dict(r) for r in rows])
+    return map_topic_rows(rows)
