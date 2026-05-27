@@ -771,7 +771,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "folio-chat" },
     { name = "folio-core" },
-    { name = "folio-embeddings" },
+    { name = "folio-embeddings", extra = ["fastembed"] },
     { name = "folio-mcp" },
     { name = "folio-sync" },
     { name = "sqlite-vec" },
@@ -796,7 +796,7 @@ dev = [
 requires-dist = [
     { name = "folio-chat", editable = "packages/chat" },
     { name = "folio-core", editable = "packages/core" },
-    { name = "folio-embeddings", editable = "packages/embeddings" },
+    { name = "folio-embeddings", extras = ["fastembed"], editable = "packages/embeddings" },
     { name = "folio-mcp", editable = "packages/mcp-server" },
     { name = "folio-sync", editable = "packages/doc-sync" },
     { name = "sqlite-vec", specifier = ">=0.1.9" },

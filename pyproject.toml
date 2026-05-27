@@ -8,7 +8,7 @@ requires-python = ">=3.14"
 dependencies = [
     "folio-chat",
     "folio-core",
-    "folio-embeddings",
+    "folio-embeddings[fastembed]",
     "folio-mcp",
     "folio-sync",
     "sqlite-vec>=0.1.9",
@@ -17,9 +17,9 @@ dependencies = [
 [tool.uv.sources]
 folio-chat = { workspace = true }
 folio-core = { workspace = true }
-folio-embeddings = { workspace = true }
 folio-mcp = { workspace = true }
 folio-sync = { workspace = true }
+folio-embeddings = { workspace = true }
 
 [dependency-groups]
 dev = [
