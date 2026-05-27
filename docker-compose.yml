@@ -25,9 +25,11 @@ services:
       FOLIO_SYNC_DATABASE__NAME: folio
       FOLIO_SYNC_DATABASE__USER: folio
       FOLIO_SYNC_DATABASE__PASSWORD: dev
-      FOLIO_SYNC_S3__ENDPOINT_URL: http://localstack:4566
+      FOLIO_SYNC_S3__ENDPOINT_URL: http://host.docker.internal:4566
       FOLIO_SYNC_S3__ACCESS_KEY: test
       FOLIO_SYNC_S3__SECRET_KEY: test
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       postgres:
         condition: service_healthy

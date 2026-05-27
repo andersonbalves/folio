@@ -57,7 +57,7 @@ class DebugPrinter:
         print(f"{_GREEN}← RESPONSE{_RESET} {name} {_DIM}({len(text)} chars){_RESET}\n{text}\n")  # noqa: T201
 
 
-_PROJECT_ROOT = Path(__file__).parent.parent.parent.parent.parent
+_PROJECT_ROOT = Path(__file__).parent.parent.parent.parent.parent.parent
 
 
 def mcp_tool_to_ollama(tool: mcp.types.Tool) -> dict[str, Any]:
