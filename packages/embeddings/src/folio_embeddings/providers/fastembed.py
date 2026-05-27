@@ -26,7 +26,7 @@ class FastEmbedEmbedder:
     def _get_instance(self) -> Any:
         if self._instance is None:
             try:
-                from fastembed import TextEmbedding  # type: ignore[import-untyped]  # ty: ignore[unresolved-import]  # noqa: I001
+                from fastembed import TextEmbedding  # type: ignore[import-untyped]  # noqa: I001
             except ImportError as exc:
                 raise ImportError(
                     "fastembed is required for FastEmbedEmbedder. "
@@ -34,7 +34,7 @@ class FastEmbedEmbedder:
                 ) from exc
             self._instance = TextEmbedding(model_name=self._model)
             # Cache dimensions from the model metadata.
-            self._dimensions = int(self._instance.dim)
+            self._dimensions = int(self._instance.embedding_size)
         return self._instance
 
     @property

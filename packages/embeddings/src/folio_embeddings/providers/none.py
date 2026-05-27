@@ -19,6 +19,6 @@ class NoneEmbedder:
             EmbedderNotConfiguredError: Always.
         """
         raise EmbedderNotConfiguredError(
-            "No embedder configured. Set FOLIO_EMBEDDER=fastembed|ollama|openai "
-            "and re-run indexing to enable semantic search."
+            "No embedder configured. Set FOLIO_MCP_EMBEDDER=fastembed|ollama|openai "
+            "and FOLIO_MCP_EMBEDDER_MODEL=<model> to enable semantic search."
         )
