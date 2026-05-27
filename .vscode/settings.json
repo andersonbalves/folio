@@ -14,7 +14,6 @@
     "**/dist": true,
     "**/.coverage": true,
     "**/.python-version": true,
-    "**/.gemini": true,
-    "**/.antigravitycli": true,
+    "**/.qlty": true
   }
 }

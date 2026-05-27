@@ -10,6 +10,7 @@ dependencies = [
     "folio-core",
     "folio-mcp",
     "folio-sync",
+    "sqlite-vec>=0.1.9",
 ]
 
 [tool.uv.sources]
@@ -20,11 +21,8 @@ folio-sync = { workspace = true }
 
 [dependency-groups]
 dev = [
-    "awscli>=1.45.9",
-    "awscli-local>=0.22.2",
     "chainlit>=2.11.1",
     "litellm>=1.85.0",
-    "localstack>=2026.4.0",
     "mcp>=1.27.1",
     "pre-commit>=4.6.0",
     "pyright>=1.1.409",

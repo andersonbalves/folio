@@ -1,48 +1,64 @@
-"""Async PostgreSQL connection pool for the doc-sync service."""
+"""Database initialization and connection management for the standalone SQLite architecture."""
 
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+import sqlite3
+from collections.abc import Generator
+from contextlib import contextmanager
+from pathlib import Path
 
-from psycopg import AsyncConnection
-from psycopg_pool import AsyncConnectionPool
+import sqlite_vec
+import structlog
 
-from folio_sync.shell.config import settings
-
-_pool: AsyncConnectionPool | None = None
+logger = structlog.get_logger()
 
 
-async def get_pool() -> AsyncConnectionPool:
-    """Return the shared connection pool, initializing it on first call."""
-    global _pool
-    if _pool is None:
-        conninfo = (
-            f"host={settings.database.host} "
-            f"port={settings.database.port} "
-            f"dbname={settings.database.name} "
-            f"user={settings.database.user} "
-            f"password={settings.database.password}"
+def init_db(db_path: Path):
+    """Inicializa o schema do SQLite."""
+    logger.info("db.init", path=str(db_path))
+    with connect_db(db_path) as conn:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS documents (
+                path TEXT PRIMARY KEY,
+                title TEXT,
+                content TEXT,
+                content_hash TEXT,
+                metadata TEXT,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS topics (
+                slug TEXT PRIMARY KEY,
+                title TEXT,
+                description TEXT,
+                category TEXT,
+                doc_path TEXT,
+                sort_order INTEGER,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_topics_category ON topics (category, sort_order)"
         )
-        _pool = AsyncConnectionPool(
-            conninfo,
-            min_size=settings.database.pool_min_size,
-            max_size=settings.database.pool_max_size,
-            kwargs={"options": f"-c statement_timeout={settings.database.statement_timeout_ms}"},
-        )
-        await _pool.open()
-    return _pool
+        conn.execute("""
+            CREATE VIRTUAL TABLE IF NOT EXISTS documents_fts USING fts5(
+                path UNINDEXED,
+                title,
+                content,
+                tokenize='trigram'
+            )
+        """)
+        conn.commit()
 
 
-@asynccontextmanager
-async def conn() -> AsyncIterator[AsyncConnection]:
-    """Yield a connection from the pool; auto-returns it on exit."""
-    pool = await get_pool()
-    async with pool.connection() as connection:
-        yield connection
-
-
-async def close_pool() -> None:
-    """Close the connection pool and reset the singleton."""
-    global _pool
-    if _pool is not None:
-        await _pool.close()
-        _pool = None
+@contextmanager
+def connect_db(db_path: Path) -> Generator[sqlite3.Connection]:
+    """Conecta ao banco e carrega a extensão sqlite-vec."""
+    conn = sqlite3.connect(db_path)
+    conn.enable_load_extension(True)
+    sqlite_vec.load(conn)
+    conn.enable_load_extension(False)
+    conn.row_factory = sqlite3.Row
+    try:
+        yield conn
+    finally:
+        conn.close()

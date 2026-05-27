@@ -240,3 +240,6 @@ __marimo__/
 .antigravitycli/
 .chainlit/
 /IDEAS
+data/
+folio.sqlite
+folio-mcp.tar
