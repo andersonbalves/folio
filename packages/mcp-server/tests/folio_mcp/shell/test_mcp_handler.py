@@ -1,0 +1,12 @@
+import pytest
+from folio_mcp.shell.handler import mcp
+
+
+@pytest.mark.asyncio
+async def test_mcp_instance():
+    assert mcp.name == "folio"
+    tools = await mcp.list_tools()
+    tool_names = [t.name for t in tools]
+    assert "list_topics" in tool_names
+    assert "search_docs" in tool_names
+    assert "get_document" in tool_names
