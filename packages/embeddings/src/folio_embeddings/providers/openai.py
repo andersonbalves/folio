@@ -29,7 +29,7 @@ class OpenAIEmbedder:
             api_key: OpenAI API key. Falls back to ``OPENAI_API_KEY`` env var if ``None``.
         """
         self._model = model
-        self._api_key = api_key
+        self._api_key = api_key or None
 
     def _get_client(self) -> Any:
         try:

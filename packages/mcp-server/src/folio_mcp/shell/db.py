@@ -77,6 +77,6 @@ def _validate_embedder_model(configured_model_id: str) -> None:
     if indexed_model != configured_model_id:
         raise RuntimeError(
             f"Embedder model mismatch: database was indexed with '{indexed_model}' "
-            f"but FOLIO_EMBEDDER__PROVIDER is configured as '{configured_model_id}'. "
+            f"but FOLIO_EMBEDDER__MODEL is configured as '{configured_model_id}'. "
             "Re-run 'folio-sync' with the current embedder to rebuild the index."
         )
