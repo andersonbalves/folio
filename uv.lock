@@ -823,6 +823,7 @@ version = "0.1.0"
 source = { editable = "packages/chat" }
 dependencies = [
     { name = "chainlit" },
+    { name = "dynaconf" },
     { name = "fastmcp" },
     { name = "litellm" },
     { name = "mcp" },
@@ -832,6 +833,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "chainlit", specifier = ">=2.11.1" },
+    { name = "dynaconf", specifier = ">=3.2.13" },
     { name = "fastmcp", specifier = ">=3.3.1" },
     { name = "litellm", specifier = ">=1.85.0" },
     { name = "mcp", specifier = ">=1.27.1" },

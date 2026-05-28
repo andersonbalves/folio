@@ -1,30 +1,21 @@
 default:
-  app:
-    name: "folio"
-    log_level: "INFO"
-  database:
-    host: "localhost"
-    port: 5432
-    name: "folio"
-    user: "folio"
-    password: "dev"
-    pool_min_size: 2
-    pool_max_size: 5
-    statement_timeout_ms: 5000
-  s3:
-    endpoint_url: "http://localhost:4566"
-    region: "us-east-1"
-    bucket: "folio-docs"
-    prefix: ""
-    access_key: "test"
-    secret_key: "test"
-  sqs:
-    endpoint_url: "http://localhost:4566"
-    queue_url: "http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/folio-sync"
-    wait_seconds: 20
-    max_messages: 10
+  embedder:
+    provider: none
+    model: ""
+    ollama_host: "http://localhost:11434"
+    ollama_timeout: 60.0
+  sync:
+    chunk_size: 512
+    chunk_max_size: 1024
+  mcp:
+    db_path: folio.sqlite
   search:
     default_limit: 10
     max_limit: 50
-    snippet_max_words: 25
-    snippet_max_fragments: 3
+  chat:
+    llm_model: "gemini/gemini-2.5-pro"
+    system_prompt: "You are a helpful assistant."
+    mcp_url: ""
+    llm_thinking_budget: 0
+    max_iterations: 10
+    mcp_connect_timeout: 10

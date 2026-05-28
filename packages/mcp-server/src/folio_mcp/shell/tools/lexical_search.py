@@ -25,7 +25,7 @@ def lexical_search(query: str, limit: int = 10) -> LexicalSearchResult:
         query: Search terms. Supports websearch syntax: "exact phrase", OR, -excluded.
         limit: Maximum number of results (1-50).
     """
-    limit = min(max(limit, 1), settings.get("search__max_limit", 50))
+    limit = min(max(limit, 1), settings.get("search.max_limit", 50))
     safe_query = sanitize_fts5_query(query)
     if not safe_query:
         return LexicalSearchResult(matches=[], query=query)

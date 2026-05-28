@@ -1,4 +1,4 @@
-"""Dynaconf settings for the MCP server (prefix: FOLIO_*)."""
+"""Dynaconf settings for the chat service (prefix: FOLIO_*)."""
 
 from dynaconf import Dynaconf
 

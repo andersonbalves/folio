@@ -18,7 +18,7 @@ def semantic_search(query: str, limit: int = 10) -> SemanticSearchResult:
         query: Natural language description of what you are looking for.
         limit: Maximum number of results (1-50).
     """
-    limit = min(max(limit, 1), settings.get("search__max_limit", 50))
+    limit = min(max(limit, 1), settings.get("search.max_limit", 50))
     embedder = get_embedder()
 
     # This raises EmbedderNotConfiguredError if FOLIO_EMBEDDER=none
