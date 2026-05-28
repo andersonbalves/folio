@@ -2,7 +2,6 @@
 
 import contextlib
 import json
-import os
 
 import sniffio
 
@@ -37,16 +36,17 @@ from typing import Any  # noqa: E402
 import chainlit as cl  # noqa: E402
 import litellm  # noqa: E402
 import mcp.types  # noqa: E402
-from dotenv import load_dotenv  # noqa: E402
 from mcp.client.session import ClientSession  # noqa: E402
 from mcp.client.sse import sse_client  # noqa: E402
 
-load_dotenv()
+from folio_chat.shell.config import settings  # noqa: E402
 
-LLM_MODEL = os.environ.get("LLM_MODEL", "gemini/gemini-2.5-pro")
-SYSTEM_PROMPT = os.environ.get("SYSTEM_PROMPT", "You are a helpful assistant.")
-MCP_LAMBDA_URL = os.environ.get("MCP_LAMBDA_URL")
-LLM_THINKING_BUDGET = int(os.environ.get("LLM_THINKING_BUDGET", "0"))
+LLM_MODEL: str = settings.get("chat.llm_model", "gemini/gemini-2.5-pro")
+SYSTEM_PROMPT: str = settings.get("chat.system_prompt", "You are a helpful assistant.")
+MCP_LAMBDA_URL: str | None = settings.get("chat.mcp_url") or None
+LLM_THINKING_BUDGET: int = int(settings.get("chat.llm_thinking_budget", 0))
+MAX_ITERATIONS: int = int(settings.get("chat.max_iterations", 10))
+MCP_CONNECT_TIMEOUT: float = float(settings.get("chat.mcp_connect_timeout", 10))
 _THINKING_EXTRAS: dict[str, Any] = (
     {"thinking": {"type": "enabled", "budget_tokens": LLM_THINKING_BUDGET}}
     if LLM_THINKING_BUDGET > 0
@@ -104,7 +104,7 @@ async def on_chat_start():
     cl.user_session.set("mcp_task", task)
 
     try:
-        await asyncio.wait_for(ready.wait(), timeout=10)
+        await asyncio.wait_for(ready.wait(), timeout=MCP_CONNECT_TIMEOUT)
         session: ClientSession = holder["session"]
         cl.user_session.set("mcp_session", session)
 
@@ -145,9 +145,7 @@ async def _handle_message(message: cl.Message) -> None:
     messages: list = cl.user_session.get("messages") or []
     messages.append({"role": "user", "content": message.content})
 
-    max_iterations = 10
-
-    for _ in range(max_iterations):
+    for _ in range(MAX_ITERATIONS):
         response = await litellm.acompletion(
             model=LLM_MODEL,
             messages=messages,
