@@ -10,9 +10,10 @@ RUN uv sync --frozen --no-dev
 
 # Fixar cache path para poder copiar no stage runtime
 ENV FASTEMBED_CACHE_PATH=/app/.fastembed_cache
+ENV ROOT_PATH_FOR_DYNACONF=/app
 # Embedder para indexação — baixa modelo e gera vetores no SQLite
-ENV FOLIO_SYNC_EMBEDDER="fastembed"
-ENV FOLIO_SYNC_EMBEDDER_MODEL="BAAI/bge-small-en-v1.5"
+ENV FOLIO_EMBEDDER__PROVIDER="fastembed"
+ENV FOLIO_EMBEDDER__MODEL="BAAI/bge-small-en-v1.5"
 
 COPY data/ ./data/
 
@@ -40,11 +41,12 @@ COPY --chown=folio:folio packages/mcp-server ./packages/mcp-server
 USER folio
 
 ENV PATH="/app/.venv/bin:$PATH"
-ENV FOLIO_MCP_DB_PATH="/app/folio.sqlite"
+ENV ROOT_PATH_FOR_DYNACONF=/app
 ENV FASTEMBED_CACHE_PATH="/app/.fastembed_cache"
+ENV FOLIO_MCP__DB_PATH="/app/folio.sqlite"
 # Embedder padrão — usa o modelo já embutido na imagem
-ENV FOLIO_MCP_EMBEDDER="fastembed"
-ENV FOLIO_MCP_EMBEDDER_MODEL="BAAI/bge-small-en-v1.5"
+ENV FOLIO_EMBEDDER__PROVIDER="fastembed"
+ENV FOLIO_EMBEDDER__MODEL="BAAI/bge-small-en-v1.5"
 
 EXPOSE 8001
 
