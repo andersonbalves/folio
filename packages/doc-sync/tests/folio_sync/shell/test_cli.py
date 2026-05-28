@@ -81,6 +81,13 @@ def test_main_runs_correctly(
     with patch.object(sys, "argv", test_args):
         main()
 
+    # create_embedder called with provider/model from settings (defaults: none/"")
+    call_args = mock_create_embedder.call_args
+    assert call_args.args == ("none", "")
+    assert "base_url" in call_args.kwargs
+    assert "timeout" in call_args.kwargs
+    assert "api_key" in call_args.kwargs
+
     mock_init_db.assert_called_once_with(db_path, mock_embedder)
     mock_connect_db.assert_called_once_with(db_path)
     mock_repo_cls.assert_called_once_with(

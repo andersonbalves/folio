@@ -28,17 +28,22 @@ def main():
         logger.error("cli.data_dir_not_found", data_dir=str(data_dir))
         sys.exit(1)
 
-    provider = settings.get("embedder", "none")
-    model = settings.get("embedder_model", "")
-    preferred_size = int(settings.get("chunk_size", 512))
-    max_size = int(settings.get("chunk_max_size", 1024))
+    provider = settings.get("embedder.provider", "none")
+    model = settings.get("embedder.model", "")
+    preferred_size = int(settings.get("sync.chunk_size", 512))
+    max_size = int(settings.get("sync.chunk_max_size", 1024))
 
-    embedder = create_embedder(provider, model)
+    embedder = create_embedder(
+        provider,
+        model,
+        base_url=settings.get("embedder.ollama_host"),
+        timeout=float(settings.get("embedder.ollama_timeout", 60.0)),
+        api_key=settings.get("embedder.api_key"),
+    )
     logger.info(
         "cli.embedder", provider=provider, model=embedder.model_id, dimensions=embedder.dimensions
     )
 
-    # Inicializa o banco (Auto-inicialização do Schema)
     init_db(db_path, embedder)
 
     stats = {"scanned": 0, "indexed": 0, "skipped": 0}
