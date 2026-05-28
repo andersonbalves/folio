@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import os
 from typing import Any
 
-# Known output dimensions for OpenAI embedding models.
 _OPENAI_DIMENSIONS: dict[str, int] = {
     "text-embedding-3-small": 1536,
     "text-embedding-3-large": 3072,
@@ -16,21 +14,22 @@ _OPENAI_DIMENSIONS: dict[str, int] = {
 class OpenAIEmbedder:
     """Embedder backed by the OpenAI embeddings API.
 
-    The ``openai`` package is an optional dependency; it is imported lazily
-    inside methods so the module can be loaded even when openai is not
-    installed.
+    The ``openai`` package is an optional dependency; imported lazily so the
+    module can be loaded even when openai is not installed.
 
-    The ``OPENAI_API_KEY`` environment variable must be set.
+    Pass ``api_key`` explicitly; if ``None``, the openai SDK falls back to the
+    ``OPENAI_API_KEY`` environment variable.
     """
 
-    def __init__(self, model: str = "text-embedding-3-small") -> None:
+    def __init__(self, model: str = "text-embedding-3-small", api_key: str | None = None) -> None:
         """Initialise the embedder.
 
         Args:
             model: OpenAI embedding model name, e.g. ``'text-embedding-3-small'``.
+            api_key: OpenAI API key. Falls back to ``OPENAI_API_KEY`` env var if ``None``.
         """
         self._model = model
-        self._api_key: str | None = os.environ.get("OPENAI_API_KEY")
+        self._api_key = api_key
 
     def _get_client(self) -> Any:
         try:
@@ -53,14 +52,7 @@ class OpenAIEmbedder:
         return _OPENAI_DIMENSIONS.get(self._model, 1536)
 
     def embed(self, texts: list[str]) -> list[list[float]]:
-        """Embed a batch of texts via the OpenAI embeddings API.
-
-        Args:
-            texts: Input strings to embed.
-
-        Returns:
-            One float vector per input text.
-        """
+        """Embed a batch of texts via the OpenAI embeddings API."""
         client = self._get_client()
         response = client.embeddings.create(input=texts, model=self._model)
         return [item.embedding for item in response.data]
