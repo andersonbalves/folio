@@ -2,6 +2,7 @@
 
 import contextlib
 import json
+import logging
 
 import sniffio
 
@@ -127,10 +128,11 @@ async def on_message(message: cl.Message):
     """Handle user messages and execute LLM tool calls."""
     try:
         await _handle_message(message)
-    except Exception as e:
-        import traceback
-
-        await cl.Message(content=f"Error: {e}\n```\n{traceback.format_exc()}\n```").send()
+    except Exception:
+        logging.exception("Error handling user message")
+        await cl.Message(
+            content="An internal error occurred. Please try again later."
+        ).send()
 
 
 async def _handle_message(message: cl.Message) -> None:
