@@ -127,10 +127,16 @@ async def on_message(message: cl.Message):
     """Handle user messages and execute LLM tool calls."""
     try:
         await _handle_message(message)
-    except Exception as e:
-        import traceback
+    except Exception:
+        import logging
 
-        await cl.Message(content=f"Error: {e}\n```\n{traceback.format_exc()}\n```").send()
+        # Security: Do not expose stack traces to the end user.
+        # Log the full error internally and send a generic message.
+        logging.error("Failed to handle message", exc_info=True)
+        await cl.Message(
+            content="An internal error occurred while processing your request. "
+            "Please try again later."
+        ).send()
 
 
 async def _handle_message(message: cl.Message) -> None:
