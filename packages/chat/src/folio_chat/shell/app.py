@@ -36,6 +36,7 @@ from typing import Any  # noqa: E402
 import chainlit as cl  # noqa: E402
 import litellm  # noqa: E402
 import mcp.types  # noqa: E402
+import structlog  # noqa: E402
 from mcp.client.session import ClientSession  # noqa: E402
 from mcp.client.sse import sse_client  # noqa: E402
 
@@ -122,15 +123,17 @@ async def on_chat_start():
         await msg.update()
 
 
+logger = structlog.get_logger()
+
+
 @cl.on_message
 async def on_message(message: cl.Message):
     """Handle user messages and execute LLM tool calls."""
     try:
         await _handle_message(message)
     except Exception as e:
-        import traceback
-
-        await cl.Message(content=f"Error: {e}\n```\n{traceback.format_exc()}\n```").send()
+        logger.error("Message handling failed", error=str(e), exc_info=True)
+        await cl.Message(content="An error occurred while processing your message.").send()
 
 
 async def _handle_message(message: cl.Message) -> None:
