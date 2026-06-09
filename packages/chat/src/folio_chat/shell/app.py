@@ -129,7 +129,7 @@ async def on_message(message: cl.Message):
     try:
         await _handle_message(message)
     except Exception:
-        logging.exception("Error handling user message")
+        logging.getLogger(__name__).exception("Error handling user message")
         await cl.Message(
             content="An internal error occurred. Please try again later."
         ).send()
