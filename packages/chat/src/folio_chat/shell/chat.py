@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import logging
 import shlex
 import sys
 from pathlib import Path
@@ -94,8 +95,10 @@ class MCPBridge:
         try:
             result = await self._client.call_tool(name, arguments, raise_on_error=False)
             return extract_result_text(result)
-        except Exception as exc:
-            return f"[tool error: {exc}]"
+        except Exception:
+            logging.getLogger(__name__).exception(f"Error calling tool {name}")
+            # We don't expose stack traces to the user output
+            return f"[tool error: Internal error while calling tool {name}]"
 
 
 DEFAULT_MODEL = "qwen3.5:9b"
