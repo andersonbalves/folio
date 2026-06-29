@@ -94,8 +94,10 @@ class MCPBridge:
         try:
             result = await self._client.call_tool(name, arguments, raise_on_error=False)
             return extract_result_text(result)
-        except Exception as exc:
-            return f"[tool error: {exc}]"
+        except Exception:
+            import logging
+            logging.getLogger(__name__).exception(f"Error calling tool {name}")
+            return "[tool error: an internal error occurred]"
 
 
 DEFAULT_MODEL = "qwen3.5:9b"
