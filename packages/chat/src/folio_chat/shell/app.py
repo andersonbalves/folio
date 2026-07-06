@@ -117,9 +117,10 @@ async def on_chat_start():
 
         msg.content = f"Connected! Found {len(tools)} tools: {', '.join([t.name for t in tools])}"
         await msg.update()
-    except Exception as e:
+    except Exception:
         done.set()
-        msg.content = f"Failed to connect to MCP: {str(e)}"
+        logging.getLogger(__name__).exception("Failed to connect to MCP server")
+        msg.content = "Failed to connect to MCP server. Please try again later."
         await msg.update()
 
 
@@ -130,9 +131,7 @@ async def on_message(message: cl.Message):
         await _handle_message(message)
     except Exception:
         logging.getLogger(__name__).exception("Error handling user message")
-        await cl.Message(
-            content="An internal error occurred. Please try again later."
-        ).send()
+        await cl.Message(content="An internal error occurred. Please try again later.").send()
 
 
 async def _handle_message(message: cl.Message) -> None:
@@ -192,8 +191,11 @@ async def _handle_message(message: cl.Message) -> None:
                                 "content": result_text,
                             }
                         )
-                    except Exception as e:
-                        error_msg = f"Error calling tool {name}: {str(e)}"
+                    except Exception:
+                        logging.getLogger(__name__).exception("Error calling tool %s", name)
+                        error_msg = (
+                            f"An error occurred calling tool {name}. Please try again later."
+                        )
                         step.output = error_msg
                         messages.append(
                             {
