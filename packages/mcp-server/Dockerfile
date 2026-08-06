@@ -6,10 +6,15 @@ ENV PORT=8001
 
 RUN pip install uv
 
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
 WORKDIR /app
 COPY . /app
 
-RUN uv sync --frozen --package folio-mcp
+RUN uv sync --frozen --package folio-mcp && \
+    chown -R appuser:appuser /app
+
+USER appuser
 
 CMD ["uv", "run", "fastmcp", "run", \
      "packages/mcp-server/src/folio_mcp/shell/handler.py:mcp", \
