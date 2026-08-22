@@ -192,8 +192,9 @@ async def _handle_message(message: cl.Message) -> None:
                                 "content": result_text,
                             }
                         )
-                    except Exception as e:
-                        error_msg = f"Error calling tool {name}: {str(e)}"
+                    except Exception:
+                        logging.getLogger(__name__).exception(f"Error calling tool {name}")
+                        error_msg = f"Error calling tool {name}: An internal error occurred."
                         step.output = error_msg
                         messages.append(
                             {
