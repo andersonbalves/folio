@@ -45,7 +45,7 @@ def semantic_search(query: str, limit: int = 10) -> SemanticSearchResult:
 
         placeholders = ",".join("?" * len(chunk_ids))
         sql_chunks = (
-            f"SELECT id, doc_path, heading_path, chunk_index, content "
+            f"SELECT id, doc_path, heading_path, chunk_index, content "  # nosec B608 # nosemgrep
             f"FROM chunks WHERE id IN ({placeholders})"
         )
         cur.execute(sql_chunks, chunk_ids)
