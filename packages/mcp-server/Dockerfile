@@ -9,6 +9,12 @@ RUN pip install uv
 WORKDIR /app
 COPY . /app
 
+RUN groupadd -r appuser && useradd -r -g appuser -m appuser
+RUN chown -R appuser:appuser /app
+USER appuser
+
+ENV UV_CACHE_DIR=/home/appuser/.cache/uv
+
 RUN uv sync --frozen --package folio-mcp
 
 CMD ["uv", "run", "fastmcp", "run", \
