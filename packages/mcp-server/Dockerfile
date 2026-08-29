@@ -11,6 +11,10 @@ COPY . /app
 
 RUN uv sync --frozen --package folio-mcp
 
+RUN groupadd -r folio && useradd -r -g folio folio
+RUN chown -R folio:folio /app
+USER folio
+
 CMD ["uv", "run", "fastmcp", "run", \
      "packages/mcp-server/src/folio_mcp/shell/handler.py:mcp", \
      "--transport", "sse", "--host", "0.0.0.0", "--port", "8001"]
