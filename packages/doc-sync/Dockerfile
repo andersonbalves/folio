@@ -10,4 +10,8 @@ COPY . /app
 
 RUN uv sync --frozen --package folio-sync
 
+RUN groupadd -r folio && useradd -r -g folio folio
+RUN chown -R folio:folio /app
+USER folio
+
 CMD ["uv", "run", "folio-sync"]
