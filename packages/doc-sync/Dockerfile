@@ -10,4 +10,7 @@ COPY . /app
 
 RUN uv sync --frozen --package folio-sync
 
+RUN useradd -m appuser && chown -R appuser /app
+USER appuser
+
 CMD ["uv", "run", "folio-sync"]
