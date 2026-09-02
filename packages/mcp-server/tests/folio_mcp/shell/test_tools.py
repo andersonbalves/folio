@@ -24,8 +24,8 @@ def _row_factory(data: dict) -> sqlite3.Row:
     con.row_factory = sqlite3.Row
     cols = ", ".join(data.keys())
     placeholders = ", ".join("?" for _ in data)
-    con.execute(f"CREATE TABLE t ({cols})")
-    con.execute(f"INSERT INTO t VALUES ({placeholders})", list(data.values()))
+    con.execute(f"CREATE TABLE t ({cols})")  # nosec B608
+    con.execute(f"INSERT INTO t VALUES ({placeholders})", list(data.values()))  # nosec B608
     row = con.execute("SELECT * FROM t").fetchone()
     con.close()
     return row

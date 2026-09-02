@@ -47,7 +47,7 @@ def semantic_search(query: str, limit: int = 10) -> SemanticSearchResult:
         sql_chunks = (
             f"SELECT id, doc_path, heading_path, chunk_index, content "
             f"FROM chunks WHERE id IN ({placeholders})"
-        )
+        )  # nosec B608
         cur.execute(sql_chunks, chunk_ids)
         chunk_rows = {r["id"]: r for r in cur.fetchall()}
 
