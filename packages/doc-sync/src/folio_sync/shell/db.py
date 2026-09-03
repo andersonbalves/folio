@@ -87,12 +87,14 @@ def init_db(db_path: Path, embedder: Embedder | None = None) -> None:
             )
         """)
         if embedder is not None and embedder.dimensions > 0:
-            conn.execute(f"""
+            dimensions = int(embedder.dimensions)
+            query = f"""
                 CREATE VIRTUAL TABLE IF NOT EXISTS chunk_embeddings USING vec0(
                     chunk_id INTEGER PRIMARY KEY,
-                    embedding float[{embedder.dimensions}]
+                    embedding float[{dimensions}]
                 )
-            """)
+            """  # nosec B608 # nosemgrep
+            conn.execute(query)
         conn.commit()
 
 
